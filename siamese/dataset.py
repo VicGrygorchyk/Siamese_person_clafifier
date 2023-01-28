@@ -6,7 +6,7 @@ from dataclasses import dataclass
 import torch
 from torch.utils.data import Dataset
 
-from siamese.preprocess.image_helper import load_image
+from siamese.preprocess import image_helper
 
 LABEL_IMG = "user"
 
@@ -75,8 +75,12 @@ class CelebImages(Dataset):
         For every example, we will select two images: label and target, and label_category aka class
         """
         item_path = self._data_paths[index]
-        label_img = torch.tensor(load_image(item_path.label_img))
-        target_img = torch.tensor(load_image(item_path.target_img))
+        # print(item_path)
+        label_img = image_helper.load_image(item_path.label_img)
+        target_img = image_helper.load_image(item_path.target_img)
+        label_img, target_img = image_helper.resize_images(label_img, target_img)
+        label_img = torch.tensor(label_img)
+        target_img = torch.tensor(target_img)
         category = item_path.label_category
 
         return label_img, target_img, category
