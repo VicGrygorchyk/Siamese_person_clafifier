@@ -5,3 +5,4 @@ nvidia-cudnn-cu11==8.5.0.96
 torch==1.13.1
 typing_extensions==4.4.0
 torchvision
+ opencv-python==4.7.0.68
