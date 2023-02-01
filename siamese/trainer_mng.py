@@ -66,7 +66,7 @@ class TrainerManager:
         # self.progress_bar = tqdm(range(self.num_training_steps))
 
     def run(self):
-        start_eval_loss = 0
+        start_eval_loss = 100
         for epoch in range(self.num_epochs):
             print(f'EPOCH {epoch}')
             self.train()
