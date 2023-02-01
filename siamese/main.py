@@ -20,6 +20,8 @@ if __name__ == "__main__":
     # model
     model = SiameseNN()
     # train
-    trainer = TrainerManager(model, '', train_dl, valid_dl, test_dl, num_epochs=3)
+    trainer = TrainerManager(
+        model, '/home/mudro/Documents/Projects/siamese/saved_model/', train_dl, valid_dl, test_dl, num_epochs=3
+    )
     trainer.run()
     trainer.test()

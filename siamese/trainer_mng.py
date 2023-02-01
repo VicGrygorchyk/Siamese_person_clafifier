@@ -89,9 +89,10 @@ class TrainerManager:
             # squeeze as logits are of shape (batch, 1) labels (batch, )
             logits = torch.squeeze(logits).float()
             label = label.float()
-            loss = self.criterion(logits, label).item()
-            log_metric('train loss', loss, step)
-            train_loss += loss
+            loss = self.criterion(logits, label)
+            loss_item = loss.item()
+            log_metric('train loss', loss_item, step)
+            train_loss += loss_item
 
             loss.backward()
             self.optimizer.step()
