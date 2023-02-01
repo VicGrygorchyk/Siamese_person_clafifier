@@ -2,9 +2,8 @@ from typing import List, Tuple, TYPE_CHECKING
 from glob import glob
 
 from torch.utils.data import Dataset
-from torchvision import transforms
 
-from preprocess import image_helper
+from preprocess import torch_transform, image_helper
 from custom_types import Category, ImageItem
 
 if TYPE_CHECKING:
@@ -13,7 +12,6 @@ if TYPE_CHECKING:
 LABEL_IMG = "user"
 SIMILAR_CATEGORY_FILE_ENDINGS = ['_true', '_t']
 DIFF_CATEGORY_FILE_ENDINGS = ['_false', '_n']
-NORMALIZE_COEF = 0.5
 
 
 class CelebImages(Dataset):
@@ -22,12 +20,7 @@ class CelebImages(Dataset):
         self.root = root
         self._data_paths: List[ImageItem] = self.init_data_paths()
         # transform
-        self.transformation = transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Resize((450, 450)),
-            transforms.Normalize(mean=[NORMALIZE_COEF, NORMALIZE_COEF, NORMALIZE_COEF],
-                                 std=[NORMALIZE_COEF, NORMALIZE_COEF, NORMALIZE_COEF])
-        ])
+        self.transformation = torch_transform.TransformHelper()
 
     def init_data_paths(self) -> List[ImageItem]:
         results: List[ImageItem] = []
@@ -73,10 +66,8 @@ class CelebImages(Dataset):
         # print(item_path)
         label_img = image_helper.load_image(item_path.label_img)
         target_img = image_helper.load_image(item_path.target_img)
-        label_img, target_img = image_helper.resize_images(label_img, target_img)
 
+        label_img, target_img = self.transformation.transform(label_img, target_img)
         category = item_path.label_category
-        label_img = self.transformation(label_img)
-        target_img = self.transformation(target_img)
 
         return label_img, target_img, category.value
