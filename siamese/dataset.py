@@ -1,31 +1,18 @@
 from typing import List, Tuple
 from glob import glob
-from enum import Enum
-from dataclasses import dataclass
+
 
 import torch
 from torch.utils.data import Dataset
+from torchvision import transforms
 
-from siamese.preprocess import image_helper
+from preprocess import image_helper
+from custom_types import Category, ImageItem
 
 LABEL_IMG = "user"
-
-
-# aka class for classification
-class Category(Enum):
-    SIMILAR = 0
-    DIFFERENT = 1
-
-
-@dataclass(slots=True)
-class ImageItem:
-    label_category: Category
-    label_img: str
-    target_img: str
-
-
 SIMILAR_CATEGORY_FILE_ENDINGS = ['_true', '_t']
 DIFF_CATEGORY_FILE_ENDINGS = ['_false', '_n']
+NORMALIZE_COEF = 0.5
 
 
 class CelebImages(Dataset):
@@ -33,6 +20,13 @@ class CelebImages(Dataset):
         super().__init__()
         self.root = root
         self._data_paths: List[ImageItem] = self.init_data_paths()
+        # transform
+        self.transformation = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Resize((450, 450)),
+            transforms.Normalize(mean=[NORMALIZE_COEF, NORMALIZE_COEF, NORMALIZE_COEF],
+                                 std=[NORMALIZE_COEF, NORMALIZE_COEF, NORMALIZE_COEF])
+        ])
 
     def init_data_paths(self) -> List[ImageItem]:
         results: List[ImageItem] = []
@@ -79,8 +73,9 @@ class CelebImages(Dataset):
         label_img = image_helper.load_image(item_path.label_img)
         target_img = image_helper.load_image(item_path.target_img)
         label_img, target_img = image_helper.resize_images(label_img, target_img)
-        label_img = torch.tensor(label_img)
-        target_img = torch.tensor(target_img)
-        category = item_path.label_category
 
-        return label_img, target_img, category
+        category = item_path.label_category
+        label_img = self.transformation(label_img)
+        target_img = self.transformation(target_img)
+
+        return label_img, target_img, category.value
