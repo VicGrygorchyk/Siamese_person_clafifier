@@ -1,13 +1,14 @@
-from typing import List, Tuple
+from typing import List, Tuple, TYPE_CHECKING
 from glob import glob
 
-
-import torch
 from torch.utils.data import Dataset
 from torchvision import transforms
 
 from preprocess import image_helper
 from custom_types import Category, ImageItem
+
+if TYPE_CHECKING:
+    from torch import TensorType
 
 LABEL_IMG = "user"
 SIMILAR_CATEGORY_FILE_ENDINGS = ['_true', '_t']
@@ -64,7 +65,7 @@ class CelebImages(Dataset):
     def __len__(self):
         return len(self._data_paths)
 
-    def __getitem__(self, index) -> Tuple[torch.Tensor, torch.Tensor, Category]:
+    def __getitem__(self, index) -> Tuple[TensorType, TensorType, int]:
         """
         For every example, we will select two images: label and target, and label_category aka class
         """
