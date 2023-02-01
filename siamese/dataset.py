@@ -65,7 +65,7 @@ class CelebImages(Dataset):
     def __len__(self):
         return len(self._data_paths)
 
-    def __getitem__(self, index) -> Tuple[TensorType, TensorType, int]:
+    def __getitem__(self, index) -> Tuple['TensorType', 'TensorType', float]:
         """
         For every example, we will select two images: label and target, and label_category aka class
         """
