@@ -21,7 +21,7 @@ if __name__ == "__main__":
     model = SiameseNN()
     # train
     trainer = TrainerManager(
-        model, '/home/mudro/Documents/Projects/siamese/saved_model/', train_dl, valid_dl, test_dl, num_epochs=20
+        model, '/home/mudro/Documents/Projects/siamese/saved_model/siamese.pt', train_dl, valid_dl, test_dl, num_epochs=20
     )
     trainer.run()
     trainer.test()
