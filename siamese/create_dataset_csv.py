@@ -1,0 +1,61 @@
+from typing import List
+from glob import glob
+import json
+from dataclasses import asdict
+
+from custom_types import Category, ImageItem
+
+
+LABEL_IMG = "user"
+SIMILAR_CATEGORY_FILE_ENDINGS = ['_true', '_t']
+DIFF_CATEGORY_FILE_ENDINGS = ['_false', '_n']
+
+
+class DatasetJSONCreator:
+    def __init__(self, root: str = "/home/mudro/Documents/Projects/siamese/data/train/"):
+        super().__init__()
+        self.root = root
+        self.data_paths: List[ImageItem] = self.init_data_paths()
+
+    def init_data_paths(self) -> List[ImageItem]:
+        results: List[ImageItem] = []
+        if not self.root.endswith('/'):
+            self.root = f"{self.root}/"
+        for folder in glob(f'{self.root}*'):
+            # get all files
+            files_path = glob(f'{folder}/*')
+            label_path_ls = list(filter(lambda item: LABEL_IMG in item, files_path))
+            if not label_path_ls:
+                raise Exception(f"Cannot find {LABEL_IMG} for folder {folder}")
+            label_index = files_path.index(label_path_ls.pop())
+            label_path = files_path.pop(label_index)
+            # there might be more than one target in the folder
+            category = self._get_category(folder)
+            for file_path in files_path:
+                results.append(
+                    ImageItem(
+                        label_category=category,
+                        label_img=label_path,
+                        target_img=file_path
+                    )
+                )
+        return results
+
+    @staticmethod
+    def _get_category(folder_path: str):
+        ending = folder_path.split('/')[-1]
+        if any([end in ending for end in SIMILAR_CATEGORY_FILE_ENDINGS]):
+            return Category.SIMILAR.value
+        elif any([end in ending for end in DIFF_CATEGORY_FILE_ENDINGS]):
+            return Category.DIFFERENT.value
+        else:
+            raise Exception(f'Cannot detect the category for folder {folder_path}')
+
+    def save_to_json(self, json_path):
+        with open(json_path, "w+") as json_file:
+            json.dump([dict((k, v) for k, v in asdict(item).items()) for item in self.data_paths], json_file, indent=4)
+
+
+if __name__ == "__main__":
+    json_creator = DatasetJSONCreator("/home/mudro/Documents/Projects/siamese/data/labeling/")
+    json_creator.save_to_json('/home/mudro/Documents/Projects/siamese/data/labels_data.json')
