@@ -8,11 +8,6 @@ class SiameseNN(nn.Module):
     def __init__(self):
         super().__init__()
         self.resnet = resnet18(weights=ResNet18_Weights.DEFAULT)
-
-        # over-write the first conv layer to be able to read MNIST images
-        # as resnet18 reads (3,x,x) where 3 is RGB channels
-        # whereas MNIST has (1,x,x) where 1 is a gray-scale channel
-        # self.resnet.conv1 = nn.Conv2d(1, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)
         self.fc_in_features = self.resnet.fc.in_features
 
         # remove the last layer of resnet18 (linear layer which is before avgpool layer)

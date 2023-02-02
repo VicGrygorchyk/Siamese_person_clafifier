@@ -4,12 +4,12 @@ from model import SiameseNN
 from dataset import CelebImages
 from trainer_mng import TrainerManager
 
-EPOCH = 20
+EPOCH = 10
 
 
 if __name__ == "__main__":
     # dataset
-    dataset = CelebImages('/home/mudro/Documents/Projects/siamese/data/labeling/')
+    dataset = CelebImages('/home/mudro/Documents/Projects/siamese/data/labels_data.json')
     train_ds, valid_ds, test_ds = random_split(dataset, [0.8, 0.1, 0.1])  # type: CelebImages
 
     # dataloader
