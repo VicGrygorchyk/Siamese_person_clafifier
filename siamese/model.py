@@ -15,8 +15,15 @@ class SiameseNN(nn.Module):
 
         # add linear layers to compare between the features of the two images
         self.fc = nn.Sequential(
-            nn.Linear(self.fc_in_features * 2, 256),
-            nn.ReLU(inplace=True),
+            nn.Linear(self.fc_in_features * 2, 1024),
+            nn.ReLU(),
+            nn.Dropout(0.4),
+            nn.Linear(1024, 512),
+            nn.ReLU(),
+            nn.Dropout(0.2),
+            nn.Linear(512, 256),
+            nn.ReLU(),
+            nn.Dropout(0.1),
             nn.Linear(256, 1),
         )
         # clasify if similar or no

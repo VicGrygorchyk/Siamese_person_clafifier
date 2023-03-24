@@ -35,6 +35,6 @@ class CelebImages(Dataset):
         target_img = image_helper.load_image(item_path.target_img)
         label_img, target_img = image_helper.resize_images(label_img, target_img)
         label_img, target_img = self.transformation.transform(label_img, target_img)
-        category: int = item_path.label_category  # type: ignore
+        category: int = item_path.label_category
 
         return label_img, target_img, category
