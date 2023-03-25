@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from torch.utils.data import DataLoader
     from torch.optim import Optimizer
 
-LEARNING_RATE = 2e-5
+LEARNING_RATE = 3e-5
 WEIGHT_DECAY = 0.01
 
 

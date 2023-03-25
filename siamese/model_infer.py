@@ -1,11 +1,99 @@
 """
 Use Siamese model
 """
-from torch import load as torch_load
+from typing import List, Tuple
+from glob import glob
+import json
+
+import torch
+from preprocess import image_helper, torch_transform
+from custom_types import Category
 
 from model import SiameseNN
 
 
-def use_model(saved_model_path):
-    model = SiameseNN()
-    model.load_state_dict(torch_load(saved_model_path))
+transformation = torch_transform.TransformHelper()
+siamese = SiameseNN()
+siamese.load_state_dict(torch.load('/home/mudro/Documents/Projects/siamese/saved_model/siamese3.pt'))
+
+
+def use_model(label_imgs: 'torch.Tensor', target_imgs: 'torch.Tensor') -> 'torch.Tensor':
+    with torch.no_grad():
+        predicted = siamese(label_imgs, target_imgs)
+        print(predicted)
+
+    return predicted
+
+
+def predict_one(img_target_path, img_label_path) -> int:
+    img_label = image_helper.load_image(img_label_path)
+    img_target = image_helper.load_image(img_target_path)
+    label_img, target_img = image_helper.resize_images(img_label, img_target)
+
+    label_img, target_img = transformation.transform(label_img, target_img)
+    label_img = label_img.unsqueeze(dim=0)
+    target_img = target_img.unsqueeze(dim=0)
+
+    predicted = use_model(label_img, target_img)
+
+    result = Category.SIMILAR.value if predicted.squeeze().item() < 0.5 else Category.DIFFERENT.value
+    print(result)
+    return result
+
+
+def predict_batch(path_to_img_folder: str) -> Tuple['torch.Tensor', List, str]:
+    if not path_to_img_folder.endswith('/'):
+        path_to_img_folder = f'{path_to_img_folder}/'
+    images_labels = []  # user
+    images_targets = []
+    files_path = glob(f'{path_to_img_folder}*')
+    image_with_label_path = [file for file in files_path if '/user' in file].pop()
+    image_with_label = image_helper.load_image(image_with_label_path)
+
+    for file_path in files_path:
+        if file_path == image_with_label_path:
+            continue
+        img = image_helper.load_image(file_path)
+        # FIXME no need to resize and transform label img as it is the same for each iter, but how to resize?
+        image_label, img = image_helper.resize_images(image_with_label, img)
+        image_label, img = transformation.transform(image_label, img)
+        images_targets.append(img)
+        images_labels.append(image_label)
+
+    label_imgs = torch.stack(images_labels, dim=0)
+    target_imgs = torch.stack(images_targets, dim=0)
+
+    predicted = use_model(label_imgs, target_imgs)
+
+    result = torch.where(predicted < 0.5, Category.SIMILAR.value, Category.DIFFERENT.value)
+    result = result.squeeze()
+    return result, [file for file in files_path if '/user' not in file], image_with_label_path
+
+
+if __name__ == "__main__":
+    # predict_one(
+    #     '/home/mudro/Documents/Projects/siamese/saved_model/siamese3.pt',
+    #     '/home/mudro/Documents/Projects/siamese/data/train/1500/user',
+    #     '/home/mudro/Documents/Projects/siamese/data/train/1500/google_img0'
+    # )
+    saved_results = []
+    for path_dir in glob('/home/mudro/Documents/Projects/siamese/data/train/*'):
+        predicted_tensor, images_pathes, label_image_path = predict_batch(path_dir)
+        predicted_res = predicted_tensor.tolist()
+        print(predicted_res)
+        label_category = predicted_res
+        if isinstance(predicted_res, list):
+            zeros = predicted_res.count(0)
+            ones = predicted_res.count(1)
+            label_category = 0 if zeros > ones else 1
+        for img_path in images_pathes:
+            saved_results.append(
+                {
+                    "label_category": label_category,
+                    "label_img": label_image_path,
+                    "target_img": img_path
+                }
+            )
+
+    with open('/home/mudro/Documents/Projects/siamese/data/dirty_label.json', "w+") as json_file:
+        json.dump(saved_results, json_file, indent=4)
