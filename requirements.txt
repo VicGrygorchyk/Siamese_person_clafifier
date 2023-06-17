@@ -1,11 +1,6 @@
-nvidia-cublas-cu11==11.10.3.66
-nvidia-cuda-nvrtc-cu11==11.7.99
-nvidia-cuda-runtime-cu11==11.7.99
-nvidia-cudnn-cu11==8.5.0.96
-torch==1.13.1
-typing_extensions==4.4.0
-torchvision
-opencv-python==4.7.0.68
-accelerate==0.15.0
-mlflow==2.1.1
-tqdm
+torch==2.0.1
+torchvision==0.15.2
+opencv-python==4.7.*
+accelerate==0.20.3
+mlflow==2.4.1
+tqdm==4.65.0
