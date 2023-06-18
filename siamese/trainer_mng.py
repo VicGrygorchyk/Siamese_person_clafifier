@@ -85,6 +85,7 @@ class TrainerManager:
             eval_loss = self.evaluate()
             # save the model if current eval loss is better than prev
             if eval_loss < start_eval_loss:
+                print(f'Saving a new version of the model {self.save_dir}')
                 torch.save(self.model.state_dict(), self.save_dir)
                 start_eval_loss = eval_loss
 

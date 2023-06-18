@@ -15,7 +15,7 @@ from siamese.model import SiameseNN
 transformation = torch_transform.TransformHelper()
 siamese = SiameseNN()
 siamese.load_state_dict(
-    torch.load('/home/mudro/Documents/Projects/siamese/saved_model/siamese_bce_v4_50_epoch_add_reward.pt')
+    torch.load('/home/mudro/Documents/Projects/siamese/saved_model/v5_with_dot_attn2_simplified.pt')
 )
 
 
