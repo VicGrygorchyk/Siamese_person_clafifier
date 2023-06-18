@@ -15,15 +15,15 @@ from utils import get_category
 
 transformation = torch_transform.TransformHelper()
 siamese = SiameseNN()
-siamese.load_state_dict(torch.load('/home/mudro/Documents/Projects/siamese/saved_model/siamese_tl_1.pt'))
+siamese.load_state_dict(torch.load('/home/mudro/Documents/Projects/siamese/saved_model/siamese_custom_loss_1.pt'))
 
 
 def use_model(imgs: 'torch.Tensor', other_imgs: 'torch.Tensor') -> torch.FloatTensor:
     with torch.no_grad():
-        activations = siamese(imgs)
-        activations2 = siamese(other_imgs)
+        activations = siamese(imgs, other_imgs)
+        print(activations)
 
-    return get_category(activations, activations2)
+    return get_category(activations)
 
 
 def predict_one(img_target_path, img_label_path) -> int:
@@ -73,8 +73,8 @@ def predict_batch(path_to_img_folder: str) -> Tuple['torch.Tensor', List, str]:
 
 if __name__ == "__main__":
     predict_one(
-        '/media/mudro/0B8CDB8D01D869D6/VICTOR_MY_LOVE/datasets/siamese/data/train/1500/user',
-        '/media/mudro/0B8CDB8D01D869D6/VICTOR_MY_LOVE/datasets/siamese/data/train/1500/google_img0'
+        '/media/mudro/0B8CDB8D01D869D6/VICTOR_MY_LOVE/datasets/siamese/data/train/1505/user',
+        '/media/mudro/0B8CDB8D01D869D6/VICTOR_MY_LOVE/datasets/siamese/data/train/1505/google_img0'
     )
     # saved_results = []
     # for path_dir in glob('/media/mudro/0B8CDB8D01D869D6/VICTOR_MY_LOVE/datasets/siamese/data/train/*'):

@@ -17,12 +17,14 @@ class SiameseNN(nn.Module):
         self.fc = nn.Sequential(
             nn.Linear(self.fc_in_features, 512),
             nn.ReLU(),
-            nn.Dropout(0.4),
+            nn.Dropout(0.1),
             nn.Linear(512, 256),
             nn.ReLU(),
             nn.Dropout(0.1),
             nn.Linear(256, 128),
-            nn.LayerNorm(128)
+            nn.LayerNorm(128),
+            nn.Dropout(0.1),
+            nn.Linear(128, 1),
         )
 
         # initialize the weights
@@ -39,11 +41,15 @@ class SiameseNN(nn.Module):
         output = output.view(output.size()[0], -1)
         return output
 
-    def forward(self, input1):
+    def forward(self, input1, input2):
         # get two images' features
-        output = self.forward_once(input1)
+        output1 = self.forward_once(input1)
+        output2 = self.forward_once(input2)
 
-        # pass the concatenation to the linear layers
+        # get their difference
+        output = (output1 - output2).pow(2)
+
+        # pass the difference to the linear layers
         output = self.fc(output)
 
         return output

@@ -1,13 +1,11 @@
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING
 
 import torch
-from accelerate import Accelerator
+from accelerate import Accelerator, scheduler
 from torch.optim import AdamW, lr_scheduler
-from torch.nn import BCELoss, TripletMarginLoss
+from torch.nn import BCEWithLogitsLoss, Module
 from mlflow import log_metric, log_param
 from tqdm.auto import tqdm
-
-from utils import calc_euclidean, CATEGORY_THRESHOLD
 
 if TYPE_CHECKING:
     from torch import Tensor
@@ -19,21 +17,17 @@ LEARNING_RATE = 3e-5
 WEIGHT_DECAY = 0.01
 
 
-def get_accuracy(logit1: 'Tensor', logit2: 'Tensor', logit3: 'Tensor', label: 'Tensor'):
+def get_accuracy(logit1: 'Tensor', logit2: 'Tensor', label: 'Tensor'):
 
     # if label is 0 - get item from of similar items, else different
     inverted = torch.where(label == 0, 1, 0)
     print("label ", label)
 
-    merged = logit2 * inverted[:, None] + logit3 * label[:, None]
-    diff = calc_euclidean(logit1, merged) + 0.1
-    diff = diff / 100
+    merged = logit1 * inverted[:, None] + logit2 * label[:, None]
+    print("merged sum ", merged.sum(1))
 
-    acc = ((diff > CATEGORY_THRESHOLD).float()) == label.float()
-    acc_list: List = acc.tolist()
-    truth = acc_list.count(True)
-    print(truth / len(acc_list))
-    return (truth / len(acc_list)) * 100
+    pred = torch.where(merged > 0.5, 1, 0)
+    return pred.eq(label).sum().item() / len(label)
 
 
 class TrainerManager:
@@ -47,37 +41,40 @@ class TrainerManager:
         log_param('weight decay', WEIGHT_DECAY)
         self.optimizer = AdamW(self.model.parameters(), lr=LEARNING_RATE, weight_decay=WEIGHT_DECAY)
         log_param('Optimizer', 'AdamW')
-        self.criterion = TripletMarginLoss()
-        log_param('Loss function', 'BCELoss')
+        self.criterion = BCEWithLogitsLoss()
+        log_param('Loss function', 'BCEWithLogitsLoss')
         self.train_dataloader = train_dl
         self.eval_dataloader = valid_dl
         self.test_dataloader = test_dl
 
+        self.lr_scheduler = scheduler.AcceleratedScheduler(
+            lr_scheduler.StepLR(
+                optimizer=self.optimizer,
+                step_size=5,
+                gamma=0.1
+            ),
+            optimizers=self.optimizer
+        )
+
         self.accelerator = Accelerator()
         # override model, optim and dataloaders to allow Accelerator to autohandle `device`
         self.model, self.optimizer, self.train_dataloader, self.eval_dataloader, \
-            self.test_dataloader, self.criterion = \
+            self.test_dataloader, self.criterion, self.lr_scheduler = \
             self.accelerator.prepare(
                 self.model,
                 self.optimizer,
                 self.train_dataloader,
                 self.eval_dataloader,
                 self.test_dataloader,
-                self.criterion
-            )  # type: Module, Optimizer, DataLoader, DataLoader, DataLoader, BCELoss
+                self.criterion,
+                self.lr_scheduler
+            )  # type: Module, Optimizer, DataLoader, DataLoader, DataLoader, BCEWithLogitsLoss, lr_scheduler.StepLR
         len_train_dataloader = len(self.train_dataloader)
         # log_metric('Length of training dataloader', len_train_dataloader)
         num_update_steps_per_epoch = len_train_dataloader
         self.num_epochs = num_epochs
         self.num_training_steps = self.num_epochs * num_update_steps_per_epoch
         # create scheduler with changing learning rate
-        # self.lr_scheduler = lr_scheduler.StepLR(
-        #     "linear",
-        #     optimizer=self.optimizer,
-        #     num_warmup_steps=100,
-        #     num_training_steps=self.num_training_steps,
-        # )
-        # self.progress_bar = tqdm(range(self.num_training_steps))
 
     def run(self):
         start_eval_loss = 100
@@ -95,15 +92,24 @@ class TrainerManager:
         train_loss = 0.0
         step = 1
         for data in tqdm(self.train_dataloader):
-            lbl_image, similar_image, diff_image, label = data
+            lbl_image, same_img, diff_img, label = data
 
-            logits1 = self.model(lbl_image)
-            logits2 = self.model(similar_image)
-            logits3 = self.model(diff_image)
+            logits1 = self.model(lbl_image, same_img)
+            logits2 = self.model(lbl_image, diff_img)
+
+            logits_combined = torch.concat([logits1, logits2], dim=0)
+            # squeeze as logits are of shape (batch, 1) labels (batch, )
+            logits_combined = torch.squeeze(logits_combined).float()
+
+            labels_combined = torch.concat(
+                [torch.zeros((logits1.shape[0], )), torch.ones((logits2.shape[0]), )],
+                dim=0
+            ).to('cuda')
+            labels_combined = labels_combined.float()
 
             self.optimizer.zero_grad()
 
-            loss = self.criterion(logits1, logits2, logits3)
+            loss = self.criterion(logits_combined, labels_combined)
             loss_item = loss.item()
             log_metric('train loss', loss_item, step)
             train_loss += loss_item
@@ -112,6 +118,7 @@ class TrainerManager:
             self.optimizer.step()
             # self.progress_bar.update(1)
             step += 1
+        self.lr_scheduler.step()
         fin_loss = train_loss / len(self.train_dataloader)
         print(f"Total train loss is {fin_loss}")
 
@@ -126,16 +133,15 @@ class TrainerManager:
             for data in tqdm(self.eval_dataloader):
                 lbl_image, similar_image, diff_image, label = data
 
-                logits1 = self.model(lbl_image)
-                logits2 = self.model(similar_image)
-                logits3 = self.model(diff_image)
+                logits1 = self.model(lbl_image, similar_image)
+                logits2 = self.model(lbl_image, diff_image)
 
-                loss = self.criterion(logits1, logits2, logits3)
+                loss = self.criterion(logits1, logits2)
                 loss_item = loss.item()
                 log_metric('eval loss', loss, step)
                 eval_loss += loss_item
 
-                correct = (correct + get_accuracy(logits1, logits2, logits3, label)) / devider
+                correct = (correct + get_accuracy(logits1, logits2, label)) / devider
                 devider = 2
 
                 log_metric('eval accuracy', correct, step)
@@ -154,15 +160,14 @@ class TrainerManager:
             for data in tqdm(self.test_dataloader):
                 lbl_image, similar_image, diff_image, label = data
 
-                logits1 = self.model(lbl_image)
-                logits2 = self.model(similar_image)
-                logits3 = self.model(diff_image)
+                logits1 = self.model(lbl_image, similar_image)
+                logits2 = self.model(lbl_image, diff_image)
 
-                loss = self.criterion(logits1, logits2, logits3)
+                loss = self.criterion(logits1, logits2)
                 log_metric('eval loss', loss, step)
 
                 test_loss += loss.item()
-                correct = (correct + get_accuracy(logits1, logits2, logits3, label)) / devider
+                correct = (correct + get_accuracy(logits1, logits2, label)) / devider
                 devider = 2
                 step += 1
         test_loss = test_loss / len(self.test_dataloader)
