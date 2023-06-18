@@ -3,7 +3,7 @@ from glob import glob
 import json
 from dataclasses import asdict
 
-from custom_types import Category, ImageItem
+from siamese.custom_types import Category, ImageItem
 
 
 LABEL_IMG = "user"

@@ -7,15 +7,14 @@ import json
 
 import torch
 
-from preprocess import image_helper, torch_transform
-from custom_types import Category
-from model import SiameseNN
-from utils import get_category
+from siamese.preprocess import image_helper, torch_transform
+from siamese.custom_types import Category
+from siamese.model import SiameseNN
 
 
 transformation = torch_transform.TransformHelper()
 siamese = SiameseNN()
-siamese.load_state_dict(torch.load('/home/mudro/Documents/Projects/siamese/saved_model/siamese_custom_loss_1.pt'))
+siamese.load_state_dict(torch.load('/home/mudro/Documents/Projects/siamese/saved_model/siamese_bce_v3_50_epoch.pt'))
 
 
 def use_model(imgs: 'torch.Tensor', other_imgs: 'torch.Tensor') -> torch.FloatTensor:
@@ -23,7 +22,7 @@ def use_model(imgs: 'torch.Tensor', other_imgs: 'torch.Tensor') -> torch.FloatTe
         activations = siamese(imgs, other_imgs)
         print(activations)
 
-    return get_category(activations)
+    return activations
 
 
 def predict_one(img_target_path, img_label_path) -> int:
@@ -37,7 +36,7 @@ def predict_one(img_target_path, img_label_path) -> int:
 
     predicted = use_model(label_img, target_img)
 
-    result = Category.DIFFERENT.value if predicted.squeeze().item() == 1.0 else Category.SIMILAR.value
+    result = Category.SIMILAR.value if predicted.squeeze().item() < 0.5 else Category.DIFFERENT.value
     print(result)
     return result
 
@@ -66,7 +65,7 @@ def predict_batch(path_to_img_folder: str) -> Tuple['torch.Tensor', List, str]:
 
     predicted = use_model(label_imgs, target_imgs)
 
-    result = torch.where(predicted == 1.0, Category.DIFFERENT.value, Category.SIMILAR.value)
+    result = torch.where(predicted < 0.5, Category.SIMILAR.value, Category.DIFFERENT.value)
     result = result.squeeze()
     return result, [file for file in files_path if '/user' not in file], image_with_label_path
 
@@ -89,11 +88,12 @@ if __name__ == "__main__":
     #     for img_path in images_pathes:
     #         saved_results.append(
     #             {
+    #                 "folder": path_dir,
     #                 "label_category": label_category,
     #                 "label_img": label_image_path,
     #                 "target_img": img_path
     #             }
     #         )
     #
-    # with open('../dirty_label.json', "w+") as json_file:
+    # with open('../../dirty_label.json', "w+") as json_file:
     #     json.dump(saved_results, json_file, indent=4)

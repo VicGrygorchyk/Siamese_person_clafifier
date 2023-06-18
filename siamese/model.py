@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torchvision.models import resnet18, ResNet18_Weights
 
 
@@ -40,6 +41,30 @@ class SiameseNN(nn.Module):
             torch.nn.init.xavier_uniform_(m.weight)
             m.bias.data.fill_(0.01)
 
+    @staticmethod
+    def cosine_distance(tensor1, tensor2):
+        """
+        Calculates the cosine distance between two tensors.
+
+        Args:
+            tensor1 (torch.Tensor): The first input tensor.
+            tensor2 (torch.Tensor): The second input tensor.
+
+        Returns:
+            torch.Tensor: The cosine distance between the two tensors.
+        """
+        # Normalize the input tensors
+        tensor1_normalized = F.normalize(tensor1, dim=-1)
+        tensor2_normalized = F.normalize(tensor2, dim=-1)
+
+        # Compute the dot product of the normalized tensors
+        dot_product = torch.sum(tensor1_normalized * tensor2_normalized, dim=-1)
+
+        # Calculate the cosine distance
+        cosine_distance = 1.0 - dot_product
+
+        return cosine_distance
+
     def forward_once(self, x):
         output = self.resnet(x)
         output = output.view(output.size()[0], -1)
@@ -50,7 +75,7 @@ class SiameseNN(nn.Module):
         output1 = self.forward_once(input1)
         output2 = self.forward_once(input2)
 
-        output = (output1 - output2).pow(2)
+        output = self.cosine_distance(output1, output2).pow(2)
 
         # pass the difference to the linear layers
         output = self.fc(output)
