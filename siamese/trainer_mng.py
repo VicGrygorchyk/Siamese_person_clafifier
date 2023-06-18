@@ -97,9 +97,6 @@ class TrainerManager:
 
             logits1 = self.model(lbl_image, same_img)
             logits2 = self.model(lbl_image, diff_img)
-            # additional punish
-            logits1 = torch.where(logits1 < CLS_THRESHOLD, logits1, torch.pow(logits1, 2))
-            logits2 = torch.where(logits2 >= CLS_THRESHOLD, logits2, logits2 - 1)
 
             logits_combined = torch.concat([logits1, logits2], dim=0)
             # squeeze as logits are of shape (batch, 1) labels (batch, )
