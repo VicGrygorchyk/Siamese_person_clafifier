@@ -10,6 +10,25 @@ def load_image(image_1_path) -> np_typing.ArrayLike:
     return cv2.imread(image_1_path, cv2.COLOR_BGR2RGB)
 
 
+def resize_2_images(image_source_1, image_source_2) -> Tuple[np_typing.ArrayLike, np_typing.ArrayLike]:
+    # resize images
+    image_1 = image_source_1.copy()
+    image_2 = image_source_2.copy()
+
+    x1, y1, _ = image_1.shape
+    x2, y2, _ = image_2.shape
+
+    x = max([x1, x2])
+    y = max([y1, y2])
+
+    image_1 = cv2.resize(image_1, (y, x))
+    image_2 = cv2.resize(image_2, (y, x))
+
+    if _is_too_small(image_1) or _is_too_small(image_2):
+        return image_source_1, image_source_2
+    return image_1, image_2
+
+
 def resize_3_images(image_source_1, image_source_2, image_source_3) -> Tuple[np_typing.ArrayLike, np_typing.ArrayLike, np_typing.ArrayLike]:
     # resize images
     image_1 = image_source_1.copy()

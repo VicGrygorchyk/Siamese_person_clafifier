@@ -20,3 +20,9 @@ class TransformHelper:
         target_2_img = self.transformation(target_2_img)
 
         return label_img, target_1_img, target_2_img
+
+    def transform_2_imgs(self, label_img, target_1_img) -> Tuple['Tensor', 'Tensor']:
+        label_img = self.transformation(label_img)
+        target_1_img = self.transformation(target_1_img)
+
+        return label_img, target_1_img

@@ -7,6 +7,8 @@ from torch.nn import BCELoss, TripletMarginLoss
 from mlflow import log_metric, log_param
 from tqdm.auto import tqdm
 
+from utils import calc_euclidean, CATEGORY_THRESHOLD
+
 if TYPE_CHECKING:
     from torch import Tensor
     from torch.nn import Module
@@ -15,10 +17,6 @@ if TYPE_CHECKING:
 
 LEARNING_RATE = 3e-5
 WEIGHT_DECAY = 0.01
-
-
-def calc_euclidean(x1, x2):
-    return (x1 - x2).pow(2).sum(1)
 
 
 def get_accuracy(logit1: 'Tensor', logit2: 'Tensor', logit3: 'Tensor', label: 'Tensor'):
@@ -31,7 +29,7 @@ def get_accuracy(logit1: 'Tensor', logit2: 'Tensor', logit3: 'Tensor', label: 'T
     diff = calc_euclidean(logit1, merged) + 0.1
     diff = diff / 100
 
-    acc = ((diff > 0.21).float()) == label.float()
+    acc = ((diff > CATEGORY_THRESHOLD).float()) == label.float()
     acc_list: List = acc.tolist()
     truth = acc_list.count(True)
     print(truth / len(acc_list))
