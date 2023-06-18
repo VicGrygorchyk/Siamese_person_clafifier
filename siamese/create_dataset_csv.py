@@ -57,5 +57,5 @@ class DatasetJSONCreator:
 
 
 if __name__ == "__main__":
-    json_creator = DatasetJSONCreator("/home/mudro/Documents/Projects/siamese/data/labeling/")
-    json_creator.save_to_json('/home/mudro/Documents/Projects/siamese/data/labels_data.json')
+    json_creator = DatasetJSONCreator("/media/mudro/0B8CDB8D01D869D6/VICTOR_MY_LOVE/datasets/siamese/data/labeled")
+    json_creator.save_to_json('/home/mudro/Documents/Projects/siamese/labels_data.json')

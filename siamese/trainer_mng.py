@@ -1,9 +1,9 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List
 
 import torch
 from accelerate import Accelerator
 from torch.optim import AdamW, lr_scheduler
-from torch.nn import BCELoss
+from torch.nn import BCELoss, TripletMarginLoss
 from mlflow import log_metric, log_param
 from tqdm.auto import tqdm
 
@@ -17,9 +17,25 @@ LEARNING_RATE = 3e-5
 WEIGHT_DECAY = 0.01
 
 
-def get_accuracy(logits: 'Tensor', label: 'Tensor'):
-    pred = torch.where(logits > 0.5, 1, 0)
-    return pred.eq(label).sum().item() * 100 / len(label)
+def calc_euclidean(x1, x2):
+    return (x1 - x2).pow(2).sum(1)
+
+
+def get_accuracy(logit1: 'Tensor', logit2: 'Tensor', logit3: 'Tensor', label: 'Tensor'):
+
+    # if label is 0 - get item from of similar items, else different
+    inverted = torch.where(label == 0, 1, 0)
+    print("label ", label)
+
+    merged = logit2 * inverted[:, None] + logit3 * label[:, None]
+    diff = calc_euclidean(logit1, merged) + 0.1
+    diff = diff / 100
+
+    acc = ((diff > 0.21).float()) == label.float()
+    acc_list: List = acc.tolist()
+    truth = acc_list.count(True)
+    print(truth / len(acc_list))
+    return (truth / len(acc_list)) * 100
 
 
 class TrainerManager:
@@ -33,7 +49,7 @@ class TrainerManager:
         log_param('weight decay', WEIGHT_DECAY)
         self.optimizer = AdamW(self.model.parameters(), lr=LEARNING_RATE, weight_decay=WEIGHT_DECAY)
         log_param('Optimizer', 'AdamW')
-        self.criterion = BCELoss()
+        self.criterion = TripletMarginLoss()
         log_param('Loss function', 'BCELoss')
         self.train_dataloader = train_dl
         self.eval_dataloader = valid_dl
@@ -81,15 +97,15 @@ class TrainerManager:
         train_loss = 0.0
         step = 1
         for data in tqdm(self.train_dataloader):
-            lbl_image, trgt_image, label = data
-            logits = self.model(lbl_image, trgt_image)
+            lbl_image, similar_image, diff_image, label = data
+
+            logits1 = self.model(lbl_image)
+            logits2 = self.model(similar_image)
+            logits3 = self.model(diff_image)
 
             self.optimizer.zero_grad()
 
-            # squeeze as logits are of shape (batch, 1) labels (batch, )
-            logits = torch.squeeze(logits).float()
-            label = label.float()
-            loss = self.criterion(logits, label)
+            loss = self.criterion(logits1, logits2, logits3)
             loss_item = loss.item()
             log_metric('train loss', loss_item, step)
             train_loss += loss_item
@@ -105,18 +121,25 @@ class TrainerManager:
         eval_loss = 0
         correct = 0
         step = 1
+        devider = 1
 
         self.model.eval()
         with torch.no_grad():
             for data in tqdm(self.eval_dataloader):
-                lbl_image, trgt_image, label = data
-                logits = self.model(lbl_image, trgt_image)
-                logits = torch.squeeze(logits).float()
-                label = label.float()
-                loss = self.criterion(logits, label).item()
+                lbl_image, similar_image, diff_image, label = data
+
+                logits1 = self.model(lbl_image)
+                logits2 = self.model(similar_image)
+                logits3 = self.model(diff_image)
+
+                loss = self.criterion(logits1, logits2, logits3)
+                loss_item = loss.item()
                 log_metric('eval loss', loss, step)
-                eval_loss += loss
-                correct = (correct + get_accuracy(logits, label)) / 2
+                eval_loss += loss_item
+
+                correct = (correct + get_accuracy(logits1, logits2, logits3, label)) / devider
+                devider = 2
+
                 log_metric('eval accuracy', correct, step)
                 step += 1
         eval_loss = eval_loss / len(self.eval_dataloader)
@@ -126,20 +149,23 @@ class TrainerManager:
     def test(self):
         test_loss = 0.0
         correct = 0.0
+        devider = 1
         step = 1
         self.model.eval()
         with torch.no_grad():
             for data in tqdm(self.test_dataloader):
-                lbl_image, trgt_image, label = data
-                logits = self.model(lbl_image, trgt_image)
-                logits = torch.squeeze(logits).float()
-                label = label.float()
-                loss = self.criterion(logits, label).item()
-                log_metric('test loss', loss, step)
+                lbl_image, similar_image, diff_image, label = data
 
-                test_loss += loss
-                correct = (correct + get_accuracy(logits, label)) / 2
-                log_metric('test accuracy', correct, step)
+                logits1 = self.model(lbl_image)
+                logits2 = self.model(similar_image)
+                logits3 = self.model(diff_image)
+
+                loss = self.criterion(logits1, logits2, logits3)
+                log_metric('eval loss', loss, step)
+
+                test_loss += loss.item()
+                correct = (correct + get_accuracy(logits1, logits2, logits3, label)) / devider
+                devider = 2
                 step += 1
         test_loss = test_loss / len(self.test_dataloader)
         print(f"Test loss {test_loss}. Accuracy: {correct}%")

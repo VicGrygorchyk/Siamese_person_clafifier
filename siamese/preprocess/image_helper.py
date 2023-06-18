@@ -10,20 +10,26 @@ def load_image(image_1_path) -> np_typing.ArrayLike:
     return cv2.imread(image_1_path, cv2.COLOR_BGR2RGB)
 
 
-def resize_images(image_source_1, image_source_2) -> Tuple[np_typing.ArrayLike, np_typing.ArrayLike]:
+def resize_3_images(image_source_1, image_source_2, image_source_3) -> Tuple[np_typing.ArrayLike, np_typing.ArrayLike, np_typing.ArrayLike]:
     # resize images
     image_1 = image_source_1.copy()
     image_2 = image_source_2.copy()
-    x1, y1, z1 = image_1.shape
-    x2, y2, z2 = image_2.shape
-    x = x2 if x1 < x2 else x1
-    y = y2 if y1 < y2 else y1
+    image_3 = image_source_3.copy()
+
+    x1, y1, _ = image_1.shape
+    x2, y2, _ = image_2.shape
+    x3, y3, _ = image_3.shape
+
+    x = max([x1, x2, x3])
+    y = max([y1, y2, y3])
+
     image_1 = cv2.resize(image_1, (y, x))
     image_2 = cv2.resize(image_2, (y, x))
+    image_3 = cv2.resize(image_3, (y, x))
 
-    if _is_too_small(image_1) or _is_too_small(image_2):
-        return image_source_1, image_source_2
-    return image_1, image_2
+    if _is_too_small(image_1) or _is_too_small(image_2) or _is_too_small(image_3):
+        return image_source_1, image_source_2, image_source_3
+    return image_1, image_2, image_3
 
 
 def resize_images_height(image_source_1, image_source_2):
@@ -246,3 +252,7 @@ def _find_best_scale(source_img, templ_img):
 def _is_too_small(image):
     if image.shape[0] < 80 or image.shape[1] < 80:
         return True
+
+
+def flip_img(image):
+    return cv2.flip(image, 0)

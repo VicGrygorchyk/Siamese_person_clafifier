@@ -3,7 +3,7 @@ import json
 from torch.utils.data import Dataset
 
 from preprocess import torch_transform, image_helper
-from custom_types import ImageItem
+from custom_types import ImageItem, Category
 
 if TYPE_CHECKING:
     from torch import TensorType
@@ -25,16 +25,31 @@ class CelebImages(Dataset):
     def __len__(self):
         return len(self._data_paths)
 
-    def __getitem__(self, index) -> Tuple['TensorType', 'TensorType', int]:
+    def __getitem__(self, index) -> Tuple['TensorType', 'TensorType', 'TensorType', int]:
         """
         For every example, we will select two images: label and target, and label_category aka class
         """
         item_path = self._data_paths[index]
         # print(item_path)
         label_img = image_helper.load_image(item_path.label_img)
-        target_img = image_helper.load_image(item_path.target_img)
-        label_img, target_img = image_helper.resize_images(label_img, target_img)
-        label_img, target_img = self.transformation.transform(label_img, target_img)
-        category: int = item_path.label_category
+        category = item_path.label_category
 
-        return label_img, target_img, category
+        if category == Category.SIMILAR:
+            same_img = image_helper.load_image(item_path.target_img)
+            # get from another directory
+            idx = index + 1
+            if idx >= len(self._data_paths):
+                idx = 0
+            diff_item_path = self._data_paths[idx]
+            diff_img = image_helper.load_image(diff_item_path.target_img)
+        else:
+            # get users image, but crop black borders and make mirror img
+            same_img = image_helper.load_image(item_path.label_img)
+            same_img = image_helper.flip_img(same_img)
+            # same_img = image_helper.crop_black_border(same_img)
+            diff_img = image_helper.load_image(item_path.target_img)
+
+        label_img, same_img, diff_img = image_helper.resize_3_images(label_img, same_img, diff_img)
+        label_img, same_img, diff_img = self.transformation.transform(label_img, same_img, diff_img)
+
+        return label_img, same_img, diff_img, category

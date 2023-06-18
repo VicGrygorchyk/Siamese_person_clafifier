@@ -10,24 +10,20 @@ class SiameseNN(nn.Module):
         self.resnet = resnet18(weights=ResNet18_Weights.DEFAULT)
         self.fc_in_features = self.resnet.fc.in_features
 
-        # remove the last layer of resnet18 (linear layer which is before avgpool layer)
+        # remove the last layer of resnet18 (linear layer which is before last layer)
         self.resnet = torch.nn.Sequential(*(list(self.resnet.children())[:-1]))
 
         # add linear layers to compare between the features of the two images
         self.fc = nn.Sequential(
-            nn.Linear(self.fc_in_features * 2, 1024),
+            nn.Linear(self.fc_in_features, 512),
             nn.ReLU(),
             nn.Dropout(0.4),
-            nn.Linear(1024, 512),
-            nn.ReLU(),
-            nn.Dropout(0.2),
             nn.Linear(512, 256),
             nn.ReLU(),
             nn.Dropout(0.1),
-            nn.Linear(256, 1),
+            nn.Linear(256, 128),
+            nn.LayerNorm(128)
         )
-        # clasify if similar or no
-        self.sigmoid = nn.Sigmoid()
 
         # initialize the weights
         self.resnet.apply(self.init_weights)
@@ -43,18 +39,11 @@ class SiameseNN(nn.Module):
         output = output.view(output.size()[0], -1)
         return output
 
-    def forward(self, input1, input2):
+    def forward(self, input1):
         # get two images' features
-        output1 = self.forward_once(input1)
-        output2 = self.forward_once(input2)
-
-        # concatenate both images' features
-        output = torch.cat((output1, output2), 1)
+        output = self.forward_once(input1)
 
         # pass the concatenation to the linear layers
         output = self.fc(output)
-
-        # pass the out of the linear layers to sigmoid layer
-        output = self.sigmoid(output)
 
         return output

@@ -14,7 +14,9 @@ class TransformHelper:
                                  std=[NORMALIZE_COEF, NORMALIZE_COEF, NORMALIZE_COEF])
         ])
 
-    def transform(self, label_img, target_img) -> Tuple['Tensor', 'Tensor']:
+    def transform(self, label_img, target_1_img, target_2_img) -> Tuple['Tensor', 'Tensor', 'Tensor']:
         label_img = self.transformation(label_img)
-        target_img = self.transformation(target_img)
-        return label_img, target_img
+        target_1_img = self.transformation(target_1_img)
+        target_2_img = self.transformation(target_2_img)
+
+        return label_img, target_1_img, target_2_img
