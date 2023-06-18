@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 import torch
 from accelerate import Accelerator
 from torch.optim import AdamW, lr_scheduler
-from torch.nn import BCEWithLogitsLoss, Module
+from torch.nn import BCEWithLogitsLoss, Module, MSELoss
 from mlflow import log_metric, log_param
 from tqdm.auto import tqdm
 
@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 
 LEARNING_RATE = 3e-5
 WEIGHT_DECAY = 0.01
+CLS_THRESHOLD = 0.5
 
 
 def get_accuracy(logit1: 'Tensor', logit2: 'Tensor', label: 'Tensor'):
@@ -26,7 +27,9 @@ def get_accuracy(logit1: 'Tensor', logit2: 'Tensor', label: 'Tensor'):
     merged = logit1 * inverted[:, None] + logit2 * label[:, None]
     print("merged sum ", merged.sum(1))
 
-    pred = torch.where(merged > 0.5, 1, 0)
+    pred = torch.where(merged > CLS_THRESHOLD, 1, 0)
+    pred = torch.squeeze(pred)
+    print(f"predicted {pred}")
     return pred.eq(label).sum().item() / len(label)
 
 
@@ -94,6 +97,9 @@ class TrainerManager:
 
             logits1 = self.model(lbl_image, same_img)
             logits2 = self.model(lbl_image, diff_img)
+            # additional punish
+            logits1 = torch.where(logits1 < CLS_THRESHOLD, logits1, torch.pow(logits1, 2))
+            logits2 = torch.where(logits2 >= CLS_THRESHOLD, logits2, logits2 - 1)
 
             logits_combined = torch.concat([logits1, logits2], dim=0)
             # squeeze as logits are of shape (batch, 1) labels (batch, )
