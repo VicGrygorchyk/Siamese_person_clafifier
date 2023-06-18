@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from torchvision.models import resnet18, ResNet18_Weights
 
 
@@ -16,20 +15,20 @@ class SiameseNN(nn.Module):
 
         # add linear layers to compare between the features of the two images
         self.fc = nn.Sequential(
-            nn.Linear(self.fc_in_features, 512),
+            nn.Linear(self.fc_in_features * 2, 512),
             nn.ReLU(),
             nn.Dropout(0.1),
             nn.Linear(512, 256),
             nn.ReLU(),
             nn.Dropout(0.1),
-            nn.Linear(256, 128),
-            nn.LayerNorm(128),
-            nn.Dropout(0.1),
-            nn.Linear(128, 64),
+            nn.Linear(256, 64),
             nn.LayerNorm(64),
             nn.ReLU(),
             nn.Dropout(0.1),
-            nn.Linear(64, 1),
+            nn.Linear(64, 32),
+            nn.ReLU(),
+            nn.Dropout(0.1),
+            nn.Linear(32, 1),
         )
 
         # initialize the weights
@@ -41,43 +40,28 @@ class SiameseNN(nn.Module):
             torch.nn.init.xavier_uniform_(m.weight)
             m.bias.data.fill_(0.01)
 
-    @staticmethod
-    def cosine_distance(tensor1, tensor2):
-        """
-        Calculates the cosine distance between two tensors.
-
-        Args:
-            tensor1 (torch.Tensor): The first input tensor.
-            tensor2 (torch.Tensor): The second input tensor.
-
-        Returns:
-            torch.Tensor: The cosine distance between the two tensors.
-        """
-        # Normalize the input tensors
-        tensor1_normalized = F.normalize(tensor1, dim=-1)
-        tensor2_normalized = F.normalize(tensor2, dim=-1)
-
-        # Compute the dot product of the normalized tensors
-        dot_product = torch.sum(tensor1_normalized * tensor2_normalized, dim=-1)
-
-        # Calculate the cosine distance
-        cosine_distance = 1.0 - dot_product
-
-        return cosine_distance
-
     def forward_once(self, x):
         output = self.resnet(x)
         output = output.view(output.size()[0], -1)
+        return output
+
+    @staticmethod
+    def dot_product_attention(query, key, value):
+        scores = torch.matmul(query, key.transpose(-2, -1))
+        attention_weights = torch.softmax(scores, dim=-1)
+        output = torch.matmul(attention_weights, value)
         return output
 
     def forward(self, input1, input2):
         # get two images' features
         output1 = self.forward_once(input1)
         output2 = self.forward_once(input2)
+        attention_output = self.dot_product_attention(output1, output2, output2)
+        output = (output1 - output2).pow(2)
 
-        output = self.cosine_distance(output1, output2).pow(2)
-
+        # concatenate the attention output with the difference
+        combined_output = torch.cat((attention_output, output), dim=1)
         # pass the difference to the linear layers
-        output = self.fc(output)
+        output = self.fc(combined_output)
 
         return output
