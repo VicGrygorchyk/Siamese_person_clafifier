@@ -25,7 +25,7 @@ if __name__ == "__main__":
         # train
         trainer = TrainerManager(
             model,
-            '/home/mudro/Documents/Projects/siamese/saved_model/siamese_bce_v2_50_epoch.pt',
+            '/home/mudro/Documents/Projects/siamese/saved_model/siamese_bce_v3_50_epoch.pt',
             train_dl, valid_dl, test_dl, num_epochs=EPOCH
         )
         trainer.run()

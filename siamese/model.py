@@ -50,7 +50,6 @@ class SiameseNN(nn.Module):
         output1 = self.forward_once(input1)
         output2 = self.forward_once(input2)
 
-        # get their difference
         output = (output1 - output2).pow(2)
 
         # pass the difference to the linear layers
