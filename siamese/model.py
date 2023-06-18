@@ -24,7 +24,11 @@ class SiameseNN(nn.Module):
             nn.Linear(256, 128),
             nn.LayerNorm(128),
             nn.Dropout(0.1),
-            nn.Linear(128, 1),
+            nn.Linear(128, 64),
+            nn.LayerNorm(64),
+            nn.ReLU(),
+            nn.Dropout(0.1),
+            nn.Linear(64, 1),
         )
 
         # initialize the weights

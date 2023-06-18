@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING
 
 import torch
-from accelerate import Accelerator, scheduler
+from accelerate import Accelerator
 from torch.optim import AdamW, lr_scheduler
 from torch.nn import BCEWithLogitsLoss, Module
 from mlflow import log_metric, log_param
@@ -47,14 +47,12 @@ class TrainerManager:
         self.eval_dataloader = valid_dl
         self.test_dataloader = test_dl
 
-        self.lr_scheduler = scheduler.AcceleratedScheduler(
-            lr_scheduler.StepLR(
-                optimizer=self.optimizer,
-                step_size=5,
-                gamma=0.1
-            ),
-            optimizers=self.optimizer
+        self.lr_scheduler = lr_scheduler.StepLR(
+            optimizer=self.optimizer,
+            step_size=5,
+            gamma=0.1
         )
+        log_param('LR scheduler ', 'lr_scheduler.StepLR')
 
         self.accelerator = Accelerator()
         # override model, optim and dataloaders to allow Accelerator to autohandle `device`
@@ -80,14 +78,14 @@ class TrainerManager:
         start_eval_loss = 100
         for epoch in range(self.num_epochs):
             print(f'EPOCH {epoch}')
-            self.train()
+            self.train(epoch)
             eval_loss = self.evaluate()
             # save the model if current eval loss is better than prev
             if eval_loss < start_eval_loss:
                 torch.save(self.model.state_dict(), self.save_dir)
                 start_eval_loss = eval_loss
 
-    def train(self):
+    def train(self, epoch):
         self.model.train(True)
         train_loss = 0.0
         step = 1
@@ -118,7 +116,7 @@ class TrainerManager:
             self.optimizer.step()
             # self.progress_bar.update(1)
             step += 1
-        self.lr_scheduler.step()
+        self.lr_scheduler.step(epoch)
         fin_loss = train_loss / len(self.train_dataloader)
         print(f"Total train loss is {fin_loss}")
 
