@@ -1,16 +1,21 @@
 from typing import Tuple
 
 import cv2
+import numpy as np
 from numpy import typing as np_typing
 from numpy import linspace as np_linspace
 # from matplotlib import pyplot as plt
 
 
-def load_image(image_1_path) -> np_typing.ArrayLike:
+def load_image(image_1_path) -> np_typing.NDArray:
     return cv2.imread(image_1_path, cv2.COLOR_BGR2RGB)
 
 
-def resize_2_images(image_source_1, image_source_2) -> Tuple[np_typing.ArrayLike, np_typing.ArrayLike]:
+def save_img(image_path: str, image: np_typing.NDArray):
+    cv2.imwrite(image_path, image)
+
+
+def resize_2_images(image_source_1, image_source_2) -> Tuple[np_typing.NDArray, np_typing.NDArray]:
     # resize images
     image_1 = image_source_1.copy()
     image_2 = image_source_2.copy()
@@ -274,4 +279,32 @@ def _is_too_small(image):
 
 
 def flip_img(image):
-    return cv2.flip(image, 0)
+    return cv2.flip(image, 1)
+
+
+def rotate(image: 'np_typing.NDArray', degree: int = 25) -> 'np_typing.NDArray':
+    (h, w) = image.shape[:2]
+    (cX, cY) = (w // 2, h // 2)
+    # rotate our image by 45 degrees around the center of the image
+    M = cv2.getRotationMatrix2D((cX, cY), degree, 1.0)
+    rotated = cv2.warpAffine(image, M, (w, h))
+    return rotated
+
+
+def apply_color_filter(image, filter_color):
+
+    # Convert the filter color from BGR to HSV
+    filter_color_hsv = cv2.cvtColor(np.uint8([[filter_color]]), cv2.COLOR_BGR2HSV)[0][0]
+
+    # Define the lower and upper bounds for the filter color in HSV
+    lower_bound = np.array([filter_color_hsv[0] - 10, 50, 50])
+    upper_bound = np.array([filter_color_hsv[0] + 10, 255, 255])
+
+    # Convert the image from BGR to HSV
+    image_hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+
+    # Create a mask based on the filter color bounds
+    mask = cv2.inRange(image_hsv, lower_bound, upper_bound)
+
+    # Apply the mask to the original image
+    filtered_image = cv2.bitwise_and(image, image, mask=mask)

@@ -1,9 +1,10 @@
 from typing import TYPE_CHECKING
 
 import torch
+from numpy import average
 from accelerate import Accelerator
 from torch.optim import AdamW, lr_scheduler
-from torch.nn import BCEWithLogitsLoss, Module, MSELoss
+from torch.nn import Module, BCELoss
 from mlflow import log_metric, log_param
 from tqdm.auto import tqdm
 
@@ -18,16 +19,11 @@ WEIGHT_DECAY = 0.01
 CLS_THRESHOLD = 0.5
 
 
-def get_accuracy(logit1: 'Tensor', logit2: 'Tensor', label: 'Tensor'):
-
-    # if label is 0 - get item from of similar items, else different
-    inverted = torch.where(label == 0, 1, 0)
+def get_accuracy(logit: 'Tensor', label: 'Tensor'):
+    label = torch.squeeze(label)
     print("label ", label)
 
-    merged = logit1 * inverted[:, None] + logit2 * label[:, None]
-    print("merged sum ", merged.sum(1))
-
-    pred = torch.where(merged > CLS_THRESHOLD, 1, 0)
+    pred = torch.where(logit > CLS_THRESHOLD, 1, 0)
     pred = torch.squeeze(pred)
     print(f"predicted {pred}")
     return pred.eq(label).sum().item() / len(label)
@@ -44,8 +40,8 @@ class TrainerManager:
         log_param('weight decay', WEIGHT_DECAY)
         self.optimizer = AdamW(self.model.parameters(), lr=LEARNING_RATE, weight_decay=WEIGHT_DECAY)
         log_param('Optimizer', 'AdamW')
-        self.criterion = BCEWithLogitsLoss()
-        log_param('Loss function', 'BCEWithLogitsLoss')
+        self.criterion = BCELoss()
+        log_param('Loss function', 'BCELoss')
         self.train_dataloader = train_dl
         self.eval_dataloader = valid_dl
         self.test_dataloader = test_dl
@@ -69,7 +65,7 @@ class TrainerManager:
                 self.test_dataloader,
                 self.criterion,
                 self.lr_scheduler
-            )  # type: Module, Optimizer, DataLoader, DataLoader, DataLoader, BCEWithLogitsLoss, lr_scheduler.StepLR
+            )  # type: Module, Optimizer, DataLoader, DataLoader, DataLoader, BCELoss, lr_scheduler.StepLR
         len_train_dataloader = len(self.train_dataloader)
         # log_metric('Length of training dataloader', len_train_dataloader)
         num_update_steps_per_epoch = len_train_dataloader
@@ -78,7 +74,7 @@ class TrainerManager:
         # create scheduler with changing learning rate
 
     def run(self):
-        start_eval_loss = 100
+        start_eval_loss = torch.inf
         for epoch in range(self.num_epochs):
             print(f'EPOCH {epoch}')
             self.train(epoch)
@@ -94,24 +90,13 @@ class TrainerManager:
         train_loss = 0.0
         step = 1
         for data in tqdm(self.train_dataloader):
-            lbl_image, same_img, diff_img, label = data
-
-            logits1 = self.model(lbl_image, same_img)
-            logits2 = self.model(lbl_image, diff_img)
-
-            logits_combined = torch.concat([logits1, logits2], dim=0)
-            # squeeze as logits are of shape (batch, 1) labels (batch, )
-            logits_combined = torch.squeeze(logits_combined).float()
-
-            labels_combined = torch.concat(
-                [torch.zeros((logits1.shape[0], )), torch.ones((logits2.shape[0]), )],
-                dim=0
-            ).to('cuda')
-            labels_combined = labels_combined.float()
+            lbl_images, target_imgs, labels = data
+            labels = torch.unsqueeze(labels, 1)
+            logits = self.model(lbl_images, target_imgs)
 
             self.optimizer.zero_grad()
 
-            loss = self.criterion(logits_combined, labels_combined)
+            loss = self.criterion(logits, labels.float())
             loss_item = loss.item()
             log_metric('train loss', loss_item, step)
             train_loss += loss_item
@@ -126,51 +111,46 @@ class TrainerManager:
 
     def evaluate(self):
         eval_loss = 0
-        correct = 0
+        acc = []
         step = 1
-        devider = 1
 
         self.model.eval()
         with torch.no_grad():
             for data in tqdm(self.eval_dataloader):
-                lbl_image, similar_image, diff_image, label = data
+                lbl_images, target_imgs, labels = data
+                labels = torch.unsqueeze(labels, 1)
+                logits = self.model(lbl_images, target_imgs)
 
-                logits1 = self.model(lbl_image, similar_image)
-                logits2 = self.model(lbl_image, diff_image)
-
-                loss = self.criterion(logits1, logits2)
+                loss = self.criterion(logits, labels.float())
                 loss_item = loss.item()
                 log_metric('eval loss', loss, step)
                 eval_loss += loss_item
 
-                correct = (correct + get_accuracy(logits1, logits2, label)) / devider
-                devider = 2
+                acc.append(get_accuracy(logits, labels))
 
-                log_metric('eval accuracy', correct, step)
+                log_metric('eval accuracy', average(acc), step)
                 step += 1
         eval_loss = eval_loss / len(self.eval_dataloader)
-        print(f"Eval loss {eval_loss}. Accuracy: {correct}%")
+        print(f"Eval loss {eval_loss}. Accuracy: {average(acc)}")
         return eval_loss
 
     def test(self):
         test_loss = 0.0
-        correct = 0.0
-        devider = 1
+        acc = []
         step = 1
         self.model.eval()
         with torch.no_grad():
             for data in tqdm(self.test_dataloader):
-                lbl_image, similar_image, diff_image, label = data
+                lbl_image, target_imgs, labels = data
+                labels = torch.unsqueeze(labels, 1)
+                logits = self.model(lbl_image, target_imgs)
 
-                logits1 = self.model(lbl_image, similar_image)
-                logits2 = self.model(lbl_image, diff_image)
-
-                loss = self.criterion(logits1, logits2)
+                loss = self.criterion(logits, labels.float())
                 log_metric('eval loss', loss, step)
 
                 test_loss += loss.item()
-                correct = (correct + get_accuracy(logits1, logits2, label)) / devider
-                devider = 2
+                acc.append(get_accuracy(logits, labels))
+
                 step += 1
         test_loss = test_loss / len(self.test_dataloader)
-        print(f"Test loss {test_loss}. Accuracy: {correct}%")
+        print(f"Test loss {test_loss}. Accuracy: {average(acc)}")

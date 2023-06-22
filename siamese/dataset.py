@@ -1,5 +1,7 @@
 from typing import List, Tuple, TYPE_CHECKING
 import json
+from random import random
+
 from torch.utils.data import Dataset
 
 from preprocess import torch_transform, image_helper
@@ -25,7 +27,7 @@ class CelebImages(Dataset):
     def __len__(self):
         return len(self._data_paths)
 
-    def __getitem__(self, index) -> Tuple['TensorType', 'TensorType', 'TensorType', int]:
+    def __getitem__(self, index) -> Tuple['TensorType', 'TensorType', int]:
         """
         For every example, we will select two images: label and target, and label_category aka class
         """
@@ -33,23 +35,18 @@ class CelebImages(Dataset):
         # print(item_path)
         label_img = image_helper.load_image(item_path.label_img)
         category = item_path.label_category
+        r = random()
 
         if category == Category.SIMILAR:
-            same_img = image_helper.load_image(item_path.target_img)
-            # get from another directory
-            idx = index + 1
-            if idx >= len(self._data_paths):
-                idx = 0
-            diff_item_path = self._data_paths[idx]
-            diff_img = image_helper.load_image(diff_item_path.target_img)
+            target_img = image_helper.load_image(item_path.target_img)
+            if 0.6 < r < 0.8:
+                target_img = image_helper.flip_img(target_img)
+            if 0.8 < r:
+                target_img = image_helper.rotate(target_img, 10)
         else:
-            # get users image, but crop black borders and make mirror img
-            same_img = image_helper.load_image(item_path.label_img)
-            same_img = image_helper.flip_img(same_img)
-            # same_img = image_helper.crop_black_border(same_img)
-            diff_img = image_helper.load_image(item_path.target_img)
+            target_img = image_helper.load_image(item_path.target_img)
 
-        label_img, same_img, diff_img = image_helper.resize_3_images(label_img, same_img, diff_img)
-        label_img, same_img, diff_img = self.transformation.transform(label_img, same_img, diff_img)
+        label_img, target_img = image_helper.resize_2_images(label_img, target_img)
+        label_img, target_img = self.transformation.transform_2_imgs(label_img, target_img)
 
-        return label_img, same_img, diff_img, category
+        return label_img, target_img, category

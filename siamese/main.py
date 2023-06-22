@@ -5,7 +5,7 @@ from model import SiameseNN
 from dataset import CelebImages
 from trainer_mng import TrainerManager
 
-EPOCH = 25
+EPOCH = 2
 
 
 if __name__ == "__main__":
@@ -25,7 +25,7 @@ if __name__ == "__main__":
         # train
         trainer = TrainerManager(
             model,
-            '/home/mudro/Documents/Projects/siamese/saved_model/v5_with_dot_attn2_simplified.pt',
+            '/home/mudro/Documents/Projects/siamese/saved_model/siamese_dot_attn_bce_v1.pt',
             train_dl, valid_dl, test_dl, num_epochs=EPOCH
         )
         trainer.run()

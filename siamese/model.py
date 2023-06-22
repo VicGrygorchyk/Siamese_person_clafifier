@@ -31,6 +31,8 @@ class SiameseNN(nn.Module):
             nn.Linear(32, 1),
         )
 
+        self.sigmoid = nn.Sigmoid()
+
         # initialize the weights
         self.resnet.apply(self.init_weights)
         self.fc.apply(self.init_weights)
@@ -47,10 +49,7 @@ class SiameseNN(nn.Module):
 
     @staticmethod
     def dot_product_attention(query, key, value):
-        scores = torch.matmul(query, key.transpose(-2, -1))
-        attention_weights = torch.softmax(scores, dim=-1)
-        output = torch.matmul(attention_weights, value)
-        return output
+        return nn.functional.scaled_dot_product_attention(query, key, value, dropout_p=0.2)
 
     def forward(self, input1, input2):
         # get two images' features
@@ -63,5 +62,5 @@ class SiameseNN(nn.Module):
         combined_output = torch.cat((attention_output, output), dim=1)
         # pass the difference to the linear layers
         output = self.fc(combined_output)
-
+        output = self.sigmoid(output)
         return output

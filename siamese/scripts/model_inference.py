@@ -15,7 +15,7 @@ from siamese.model import SiameseNN
 transformation = torch_transform.TransformHelper()
 siamese = SiameseNN()
 siamese.load_state_dict(
-    torch.load('/home/mudro/Documents/Projects/siamese/saved_model/v5_with_dot_attn2_simplified.pt')
+    torch.load('/home/mudro/Documents/Projects/siamese/saved_model/with_dot_attn_v4.pt')
 )
 
 
@@ -38,7 +38,7 @@ def predict_one(img_target_path, img_label_path) -> int:
 
     predicted = use_model(label_img, target_img)
 
-    result = Category.SIMILAR.value if predicted.squeeze().item() <= 0.4 else Category.DIFFERENT.value
+    result = Category.SIMILAR.value if predicted.squeeze().item() <= 0.5 else Category.DIFFERENT.value
     print(result)
     return result
 
@@ -50,24 +50,27 @@ def predict_batch(path_to_img_folder: str) -> Tuple['torch.Tensor', List, str]:
     images_targets = []
     files_path = glob(f'{path_to_img_folder}*')
     image_with_label_path = [file for file in files_path if '/user' in file].pop()
+    print(f"image_with_label_path ${image_with_label_path}")
     image_with_label = image_helper.load_image(image_with_label_path)
 
     for file_path in files_path:
         if file_path == image_with_label_path:
             continue
         img = image_helper.load_image(file_path)
-        # FIXME no need to resize and transform label img as it is the same for each iter, but how to resize?
-        image_label, img = image_helper.resize_2_images(image_with_label, img)
-        image_label, img = transformation.transform_2_imgs(image_label, img)
+        print(f"file_path ${file_path}")
+        image_with_label_copy = image_with_label.copy()
+
+        image_label_resized, img = image_helper.resize_2_images(image_with_label_copy, img)
+        image_label_transformed, img = transformation.transform_2_imgs(image_label_resized, img)
+        images_labels.append(image_label_transformed)
         images_targets.append(img)
-        images_labels.append(image_label)
 
     label_imgs = torch.stack(images_labels, dim=0)
     target_imgs = torch.stack(images_targets, dim=0)
 
     predicted = use_model(label_imgs, target_imgs)
 
-    result = torch.where(predicted < 0.5, Category.SIMILAR.value, Category.DIFFERENT.value)
+    result = torch.where(predicted > 0.5, Category.DIFFERENT.value, Category.SIMILAR.value)
     result = result.squeeze()
     return result, [file for file in files_path if '/user' not in file], image_with_label_path
 
@@ -78,7 +81,7 @@ if __name__ == "__main__":
     #     '/media/mudro/0B8CDB8D01D869D6/VICTOR_MY_LOVE/datasets/siamese/data/train/1505/google_img0'
     # )
     saved_results = []
-    for path_dir in glob('/media/mudro/0B8CDB8D01D869D6/VICTOR_MY_LOVE/datasets/siamese/data/train/*'):
+    for path_dir in glob('/media/mudro/0B8CDB8D01D869D6/VICTOR_MY_LOVE/datasets/siamese/data/test/*_false')[-10:]:
         predicted_tensor, images_pathes, label_image_path = predict_batch(path_dir)
         predicted_res = predicted_tensor.tolist()
         print(predicted_res)
@@ -97,5 +100,5 @@ if __name__ == "__main__":
                 }
             )
 
-    with open('/home/mudro/Documents/Projects/siamese/dirty_label.json', "w+") as json_file:
-        json.dump(saved_results, json_file, indent=4)
+    # with open('/home/mudro/Documents/Projects/siamese/dirty_label.json', "w+") as json_file:
+    #     json.dump(saved_results, json_file, indent=4)
