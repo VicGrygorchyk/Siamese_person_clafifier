@@ -26,7 +26,7 @@ def get_accuracy(logit: 'Tensor', label: 'Tensor'):
     pred = torch.where(logit > CLS_THRESHOLD, 1, 0)
     pred = torch.squeeze(pred)
     print(f"predicted {pred}")
-    return pred.eq(label).sum().item() / len(label)
+    return (pred == label).sum().item() / len(label)
 
 
 class TrainerManager:
@@ -71,7 +71,6 @@ class TrainerManager:
         num_update_steps_per_epoch = len_train_dataloader
         self.num_epochs = num_epochs
         self.num_training_steps = self.num_epochs * num_update_steps_per_epoch
-        # create scheduler with changing learning rate
 
     def run(self):
         start_eval_loss = torch.inf
@@ -81,8 +80,11 @@ class TrainerManager:
             eval_loss = self.evaluate()
             # save the model if current eval loss is better than prev
             if eval_loss < start_eval_loss:
-                print(f'Saving a new version of the model {self.save_dir}')
-                torch.save(self.model.state_dict(), self.save_dir)
+                self.accelerator.wait_for_everyone()
+                unwrapped_model = self.accelerator.unwrap_model(self.model)
+
+                print(f'Saving a new version of the unwrapped_model {self.save_dir}')
+                torch.save(unwrapped_model.state_dict(), self.save_dir)
                 start_eval_loss = eval_loss
 
     def train(self, epoch):
@@ -90,21 +92,22 @@ class TrainerManager:
         train_loss = 0.0
         step = 1
         for data in tqdm(self.train_dataloader):
-            lbl_images, target_imgs, labels = data
-            labels = torch.unsqueeze(labels, 1)
-            logits = self.model(lbl_images, target_imgs)
+            with self.accelerator.accumulate(self.model):
+                lbl_images, target_imgs, labels = data
+                labels = torch.unsqueeze(labels, 1)
+                logits = self.model(lbl_images, target_imgs)
 
-            self.optimizer.zero_grad()
+                self.optimizer.zero_grad()
 
-            loss = self.criterion(logits, labels.float())
-            loss_item = loss.item()
-            log_metric('train loss', loss_item, step)
-            train_loss += loss_item
+                loss = self.criterion(logits, labels.float())
+                loss_item = loss.item()
+                log_metric('train loss', loss_item, step)
+                train_loss += loss_item
 
-            loss.backward()
-            self.optimizer.step()
-            # self.progress_bar.update(1)
-            step += 1
+                self.accelerator.backward(loss)
+                self.optimizer.step()
+
+                step += 1
         self.lr_scheduler.step(epoch)
         fin_loss = train_loss / len(self.train_dataloader)
         print(f"Total train loss is {fin_loss}")
@@ -115,11 +118,12 @@ class TrainerManager:
         step = 1
 
         self.model.eval()
+        unwrapped_model = self.accelerator.unwrap_model(self.model)
         with torch.no_grad():
             for data in tqdm(self.eval_dataloader):
                 lbl_images, target_imgs, labels = data
                 labels = torch.unsqueeze(labels, 1)
-                logits = self.model(lbl_images, target_imgs)
+                logits = unwrapped_model(lbl_images, target_imgs)
 
                 loss = self.criterion(logits, labels.float())
                 loss_item = loss.item()
@@ -139,11 +143,12 @@ class TrainerManager:
         acc = []
         step = 1
         self.model.eval()
+        unwrapped_model = self.accelerator.unwrap_model(self.model)
         with torch.no_grad():
             for data in tqdm(self.test_dataloader):
                 lbl_image, target_imgs, labels = data
                 labels = torch.unsqueeze(labels, 1)
-                logits = self.model(lbl_image, target_imgs)
+                logits = unwrapped_model(lbl_image, target_imgs)
 
                 loss = self.criterion(logits, labels.float())
                 log_metric('eval loss', loss, step)

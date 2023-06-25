@@ -15,8 +15,8 @@ SIMILAR_CATEGORY_FILE_ENDINGS = ['_true', '_t']
 DIFF_CATEGORY_FILE_ENDINGS = ['_false', '_n']
 
 
-class CelebImages(Dataset):
-    def __init__(self, json_file: str = "/home/mudro/Documents/Projects/siamese/data/train.json"):
+class PersonsImages(Dataset):
+    def __init__(self, json_file: str):
         super().__init__()
         self.root = json_file
         with open(self.root, 'r+') as json_file:
