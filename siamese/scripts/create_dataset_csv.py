@@ -12,7 +12,7 @@ DIFF_CATEGORY_FILE_ENDINGS = ['_false', '_n']
 
 
 class DatasetJSONCreator:
-    def __init__(self, root: str = "/home/mudro/Documents/Projects/siamese/data/train/"):
+    def __init__(self, root: str):
         super().__init__()
         self.root = root
         self.data_paths: List[ImageItem] = self.init_data_paths()

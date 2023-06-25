@@ -1,12 +1,14 @@
 """
 Use Siamese model
 """
+import os
+import sys
 from typing import List, Tuple
 from glob import glob
-import json
 
 import torch
 
+sys.path.append('./')
 from siamese.preprocess import image_helper, torch_transform
 from siamese.custom_types import Category
 from siamese.model import SiameseNN
@@ -16,7 +18,7 @@ transformation = torch_transform.TransformHelper()
 with torch.no_grad():
     siamese = SiameseNN()
     siamese.load_state_dict(
-        torch.load('/home/mudro/Documents/Projects/siamese/saved_model/siamese_dot_attn_bce_v3.pt')
+        torch.load(os.getenv("SAVE_MODEL_PATH"))
     )
 
 
@@ -106,5 +108,5 @@ if __name__ == "__main__":
             )
     print(len(accuracy))
     print(accuracy.count(True))
-    with open('/home/mudro/Documents/Projects/siamese/dirty_label.json', "w+") as json_file:
-        json.dump(saved_results, json_file, indent=4)
+    # with open('/home/mudro/Documents/Projects/siamese/dirty_label.json', "w+") as json_file:
+    #     json.dump(saved_results, json_file, indent=4)

@@ -145,6 +145,20 @@ def crop_image(image_1, image_2):
     return image_1_crop, image_2_crop
 
 
+def get_frames(image: 'np_typing.NDArray'):
+    row1_, col1_, _ = image.shape
+    img_copy = image.copy()
+    subtractor = 5
+    row1 = row1_ // subtractor
+    col1 = col1_ // subtractor
+    down_row1 = row1_ // subtractor
+    up = img_copy[0: row1, :]
+    left = img_copy[:, 0: col1]
+    right = img_copy[:, -col1:]
+    down = img_copy[-down_row1:, :]
+    return np.concatenate(up, left, right, down)
+
+
 def crop_black_border(img):
     x_shape = img.shape[0] // 2
     y_shape = img.shape[1] // 2

@@ -53,7 +53,7 @@ class TrainerManager:
         )
         log_param('LR scheduler ', 'lr_scheduler.StepLR')
 
-        self.accelerator = Accelerator()
+        self.accelerator = Accelerator(gradient_accumulation_steps=8)
         # override model, optim and dataloaders to allow Accelerator to autohandle `device`
         self.model, self.optimizer, self.train_dataloader, self.eval_dataloader, \
             self.test_dataloader, self.criterion, self.lr_scheduler = \
@@ -75,17 +75,18 @@ class TrainerManager:
     def run(self):
         start_eval_loss = torch.inf
         for epoch in range(self.num_epochs):
-            print(f'EPOCH {epoch}')
-            self.train(epoch)
-            eval_loss = self.evaluate()
-            # save the model if current eval loss is better than prev
-            if eval_loss < start_eval_loss:
-                self.accelerator.wait_for_everyone()
-                unwrapped_model = self.accelerator.unwrap_model(self.model)
+            with self.accelerator.accumulate(self.model):
+                print(f'EPOCH {epoch}')
+                self.train(epoch)
+                eval_loss = self.evaluate()
+                # save the model if current eval loss is better than prev
+                if eval_loss < start_eval_loss:
+                    self.accelerator.wait_for_everyone()
+                    unwrapped_model = self.accelerator.unwrap_model(self.model)
 
-                print(f'Saving a new version of the unwrapped_model {self.save_dir}')
-                torch.save(unwrapped_model.state_dict(), self.save_dir)
-                start_eval_loss = eval_loss
+                    print(f'Saving a new version of the unwrapped_model {self.save_dir}')
+                    torch.save(unwrapped_model.state_dict(), self.save_dir)
+                    start_eval_loss = eval_loss
 
     def train(self, epoch):
         self.model.train(True)
