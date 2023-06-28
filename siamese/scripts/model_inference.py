@@ -86,7 +86,7 @@ if __name__ == "__main__":
     saved_results = []
     accuracy = []
 
-    for path_dir in glob('/media/mudro/0B8CDB8D01D869D6/VICTOR_MY_LOVE/datasets/siamese/data/labeled/*'):
+    for path_dir in glob('/media/mudro/0B8CDB8D01D869D6/VICTOR_MY_LOVE/datasets/siamese/data/New_data/*'):
         predicted_tensor, images_pathes, label_image_path = predict_batch(path_dir)
         predicted_res = predicted_tensor.tolist()
         print(predicted_res)
@@ -108,5 +108,5 @@ if __name__ == "__main__":
             )
     print(len(accuracy))
     print(accuracy.count(True))
-    # with open('/home/mudro/Documents/Projects/siamese/dirty_label.json', "w+") as json_file:
-    #     json.dump(saved_results, json_file, indent=4)
+    with open('/home/mudro/Documents/Projects/siamese/dirty_label.json', "w+") as json_file:
+        json.dump(saved_results, json_file, indent=4)

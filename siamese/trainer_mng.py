@@ -4,7 +4,7 @@ import torch
 from numpy import average
 from accelerate import Accelerator
 from torch.optim import AdamW, lr_scheduler
-from torch.nn import Module, BCELoss
+from torch.nn import Module, BCEWithLogitsLoss
 from mlflow import log_metric, log_param
 from tqdm.auto import tqdm
 
@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from torch.utils.data import DataLoader
     from torch.optim import Optimizer
 
-LEARNING_RATE = 3e-5
+LEARNING_RATE = 3e-3
 WEIGHT_DECAY = 0.01
 CLS_THRESHOLD = 0.5
 
@@ -22,9 +22,9 @@ CLS_THRESHOLD = 0.5
 def get_accuracy(logit: 'Tensor', label: 'Tensor'):
     label = torch.squeeze(label)
     print("label ", label)
+    print("logit ", logit)
 
-    pred = torch.where(logit > CLS_THRESHOLD, 1, 0)
-    pred = torch.squeeze(pred)
+    pred = torch.argmax(logit, 1)
     print(f"predicted {pred}")
     return (pred == label).sum().item() / len(label)
 
@@ -40,8 +40,8 @@ class TrainerManager:
         log_param('weight decay', WEIGHT_DECAY)
         self.optimizer = AdamW(self.model.parameters(), lr=LEARNING_RATE, weight_decay=WEIGHT_DECAY)
         log_param('Optimizer', 'AdamW')
-        self.criterion = BCELoss()
-        log_param('Loss function', 'BCELoss')
+        self.criterion = BCEWithLogitsLoss()
+        log_param('Loss function', 'BCEWithLogitsLoss')
         self.train_dataloader = train_dl
         self.eval_dataloader = valid_dl
         self.test_dataloader = test_dl
@@ -53,7 +53,7 @@ class TrainerManager:
         )
         log_param('LR scheduler ', 'lr_scheduler.StepLR')
 
-        self.accelerator = Accelerator(gradient_accumulation_steps=8)
+        self.accelerator = Accelerator(gradient_accumulation_steps=16)
         # override model, optim and dataloaders to allow Accelerator to autohandle `device`
         self.model, self.optimizer, self.train_dataloader, self.eval_dataloader, \
             self.test_dataloader, self.criterion, self.lr_scheduler = \
@@ -65,9 +65,9 @@ class TrainerManager:
                 self.test_dataloader,
                 self.criterion,
                 self.lr_scheduler
-            )  # type: Module, Optimizer, DataLoader, DataLoader, DataLoader, BCELoss, lr_scheduler.StepLR
+            )  # type: Module, Optimizer, DataLoader, DataLoader, DataLoader, BCEWithLogitsLoss, lr_scheduler.StepLR
+        self.model = torch.compile(self.model)
         len_train_dataloader = len(self.train_dataloader)
-        # log_metric('Length of training dataloader', len_train_dataloader)
         num_update_steps_per_epoch = len_train_dataloader
         self.num_epochs = num_epochs
         self.num_training_steps = self.num_epochs * num_update_steps_per_epoch
@@ -94,13 +94,11 @@ class TrainerManager:
         step = 1
         for data in tqdm(self.train_dataloader):
             with self.accelerator.accumulate(self.model):
-                lbl_images, target_imgs, labels = data
-                labels = torch.unsqueeze(labels, 1)
+                lbl_images, target_imgs, labels, labels_onehot = data
                 logits = self.model(lbl_images, target_imgs)
-
                 self.optimizer.zero_grad()
 
-                loss = self.criterion(logits, labels.float())
+                loss = self.criterion(logits, labels_onehot.float())
                 loss_item = loss.item()
                 log_metric('train loss', loss_item, step)
                 train_loss += loss_item
@@ -122,11 +120,10 @@ class TrainerManager:
         unwrapped_model = self.accelerator.unwrap_model(self.model)
         with torch.no_grad():
             for data in tqdm(self.eval_dataloader):
-                lbl_images, target_imgs, labels = data
-                labels = torch.unsqueeze(labels, 1)
+                lbl_images, target_imgs, labels, labels_onehot = data
                 logits = unwrapped_model(lbl_images, target_imgs)
 
-                loss = self.criterion(logits, labels.float())
+                loss = self.criterion(logits, labels_onehot.float())
                 loss_item = loss.item()
                 log_metric('eval loss', loss, step)
                 eval_loss += loss_item
@@ -147,11 +144,9 @@ class TrainerManager:
         unwrapped_model = self.accelerator.unwrap_model(self.model)
         with torch.no_grad():
             for data in tqdm(self.test_dataloader):
-                lbl_image, target_imgs, labels = data
-                labels = torch.unsqueeze(labels, 1)
-                logits = unwrapped_model(lbl_image, target_imgs)
-
-                loss = self.criterion(logits, labels.float())
+                lbl_images, target_imgs, labels, labels_onehot = data
+                logits = unwrapped_model(lbl_images, target_imgs)
+                loss = self.criterion(logits, labels_onehot.float())
                 log_metric('eval loss', loss, step)
 
                 test_loss += loss.item()

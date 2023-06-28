@@ -2,20 +2,6 @@ import torch
 import torch.nn as nn
 from torchvision.models import resnet34, ResNet34_Weights
 
-from preprocess.image_helper import get_frames
-
-
-class SelfAttention(nn.Module):
-    def __init__(self, in_channels):
-        super().__init__()
-        self.conv = nn.Conv2d(in_channels, 1, kernel_size=1)  # 1x1 convolution to reduce channels
-        self.softmax = nn.Softmax(dim=2)  # softmax along spatial dimensions
-
-    def forward(self, x):
-        attention = self.conv(x)
-        attention = self.softmax(attention)
-        return attention
-
 
 class ScaledDotAttnModule(nn.Module):
 
@@ -27,69 +13,54 @@ class ScaledDotAttnModule(nn.Module):
         return self.scaled_dot_attn(query, key, value, dropout_p=dropout_p)
 
 
-class FrameDetector(nn.Module):
-
-    def __init__(self):
-        super().__init__()
-        # self.cnn = nn.Conv2d(3, 16, 3)
-        # self.self_attn = SelfAttention(16)
-        # self.conv2 = nn.Conv2d(16, 16, kernel_size=3, padding=1)
-        # self.fc = nn.Linear(256 * 256 * 49, 64)
-        self.resnet = resnet34()
-
-    @staticmethod
-    def _get_image_borders(image):
-        return get_frames(image)
-
-    def forward(self, image1):
-        output = self.resnet(image1)
-        output = output.view(output.size()[0], -1)
-        return output
-
-
 class SiameseNN(nn.Module):
 
     def __init__(self):
         super().__init__()
-        self.resnet = resnet34(weights=ResNet34_Weights.DEFAULT)
-        self.fc_in_features = self.resnet.fc.in_features
+        self.resnet_org = resnet34(weights=ResNet34_Weights.DEFAULT)
+        self.fc_in_features = self.resnet_org.fc.in_features
 
-        # remove the last layer of resnet18 (linear layer which is before last layer)
-        self.resnet = torch.nn.Sequential(*(list(self.resnet.children())[:-1]))
-        self.frame_detector = FrameDetector()
+        # remove the last layer of resnet (linear layer which is before last layer)
+        self.resnet = torch.nn.Sequential(*(list(self.resnet_org.children())[:-1]))
 
         # add linear layers to compare between the features of the two images
         self.fc = nn.Sequential(
-            nn.Linear(3024, 512),
+            nn.Linear(self.fc_in_features * 2, 512),
             nn.ReLU(),
-            nn.Dropout(0.1),
+            nn.Dropout(0.3),
             nn.Linear(512, 256),
+            nn.LayerNorm(256),
+            nn.ReLU(),
+            nn.Dropout(0.2),
+            nn.Linear(256, 128),
+            nn.LayerNorm(128),
+            nn.ReLU(),
+            nn.Dropout(0.3),
+            nn.Linear(128, 32),
             nn.ReLU(),
             nn.Dropout(0.1),
-            nn.Linear(256, 64),
-            nn.LayerNorm(64),
-            nn.ReLU(),
-            nn.Dropout(0.1),
-            nn.Linear(64, 32),
-            nn.ReLU(),
-            nn.Dropout(0.1),
-            nn.Linear(32, 1),
+            nn.Linear(32, 2),
         )
+        self.scaled_dot_attn = ScaledDotAttnModule()
 
-        self.scaled_dot_attm = ScaledDotAttnModule()
-        self.sigmoid = nn.Sigmoid()
+        self.softmax = nn.Softmax(dim=1)
 
-        # initialize the weights
-        self.resnet.apply(self.init_weights)
+        # self.resnet.apply(self.init_weights)
         self.fc.apply(self.init_weights)
 
     def init_weights(self, m):
         if isinstance(m, nn.Linear):
             torch.nn.init.xavier_uniform_(m.weight)
-            m.bias.data.fill_(0.01)
+            m.bias.data.fill_(0.05)
 
     def forward_once(self, x):
         output = self.resnet(x)
+        output = output.view(output.size()[0], -1)
+
+        return output
+
+    def forward_frame_once(self, x):
+        output = self.resnet2(x)
         output = output.view(output.size()[0], -1)
         return output
 
@@ -97,16 +68,14 @@ class SiameseNN(nn.Module):
         # get two images' features
         output1 = self.forward_once(input1)
         output2 = self.forward_once(input2)
-        frame1 = self.frame_detector(input1)
-        frame2 = self.frame_detector(input2)
-        combined_output1 = torch.cat((output1, frame1), dim=1)
-        combined_output2 = torch.cat((output2, frame2), dim=1)
+        output = (output1 - output2).pow(2)
 
-        attention_output = self.scaled_dot_attm(combined_output1, combined_output2, combined_output2)
-        output = (combined_output1 - combined_output1).pow(2)
+        attention_output = self.scaled_dot_attn(output1, output2, output2)
+
         combined_output = torch.cat((attention_output, output), dim=1)
 
         # pass the difference to the linear layers
         output = self.fc(combined_output)
-        output = self.sigmoid(output)
+        output = self.softmax(output)
+
         return output

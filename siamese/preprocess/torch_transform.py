@@ -1,17 +1,21 @@
-from typing import Tuple
+from typing import Tuple, TYPE_CHECKING
 
 from torchvision import transforms
 
-NORMALIZE_COEF = 0.5
+if TYPE_CHECKING:
+    from torch import TensorType
+
+MEAN_COEF = 0.8
+STD_COEF = 0.5
 
 
 class TransformHelper:
     def __init__(self):
         self.transformation = transforms.Compose([
             transforms.ToTensor(),
-            transforms.Resize((450, 450)),
-            transforms.Normalize(mean=[NORMALIZE_COEF, NORMALIZE_COEF, NORMALIZE_COEF],
-                                 std=[NORMALIZE_COEF, NORMALIZE_COEF, NORMALIZE_COEF])
+            transforms.Resize((350, 350)),
+            transforms.Normalize(mean=[MEAN_COEF, MEAN_COEF, MEAN_COEF],
+                                 std=[STD_COEF, STD_COEF, STD_COEF])
         ])
 
     def transform(self, label_img, target_1_img, target_2_img) -> Tuple['Tensor', 'Tensor', 'Tensor']:
@@ -21,7 +25,7 @@ class TransformHelper:
 
         return label_img, target_1_img, target_2_img
 
-    def transform_2_imgs(self, label_img, target_1_img) -> Tuple['Tensor', 'Tensor']:
+    def transform_2_imgs(self, label_img, target_1_img) -> Tuple['TensorType', 'TensorType']:
         label_img = self.transformation(label_img)
         target_1_img = self.transformation(target_1_img)
 

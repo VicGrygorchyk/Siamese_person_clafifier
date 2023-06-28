@@ -156,7 +156,23 @@ def get_frames(image: 'np_typing.NDArray'):
     left = img_copy[:, 0: col1]
     right = img_copy[:, -col1:]
     down = img_copy[-down_row1:, :]
-    return np.concatenate(up, left, right, down)
+
+    up_n_down = np.concatenate((up, down), axis=0)
+    left_n_right = np.concatenate((left, right), axis=1)
+    left_n_right_height, left_n_right_width, _ = left_n_right.shape
+    up_n_down_height, up_n_down_width, _ = up_n_down.shape
+
+    # Calculate the shape of the new array
+    new_height = left_n_right_height + up_n_down_height
+    new_width = left_n_right_width + up_n_down_width
+
+    # Create a new numpy array with the desired shape
+    result = np.zeros((new_height, new_width, 3))
+
+    # Assign values from the original arrays to the new array
+    result[:left_n_right_height, :left_n_right_width, :] = left_n_right
+    result[left_n_right_height:, left_n_right_width:, :] = up_n_down
+    return result
 
 
 def crop_black_border(img):

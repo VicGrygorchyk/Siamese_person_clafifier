@@ -4,11 +4,11 @@ from torch.utils.data import DataLoader, random_split
 from torch import cuda
 from mlflow import start_run
 
-from model import SiameseNN
-from dataset import PersonsImages
-from trainer_mng import TrainerManager
+from siamese.model import SiameseNN
+from siamese.dataset import PersonsImages
+from siamese.trainer_mng import TrainerManager
 
-EPOCH = 1
+EPOCH = 50
 
 
 DATASET_PATH = os.getenv("DATASET_PATH")
@@ -25,8 +25,8 @@ if __name__ == "__main__":
 
         # dataloader
         train_dl = DataLoader(train_ds, shuffle=True, batch_size=4)
-        valid_dl = DataLoader(valid_ds, shuffle=False, batch_size=8)
-        test_dl = DataLoader(test_ds, shuffle=False, batch_size=8)
+        valid_dl = DataLoader(valid_ds, shuffle=False, batch_size=12)
+        test_dl = DataLoader(test_ds, shuffle=False, batch_size=12)
 
         # model
         model = SiameseNN()
