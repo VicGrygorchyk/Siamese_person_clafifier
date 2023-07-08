@@ -5,6 +5,7 @@ import os
 import sys
 from typing import List, Tuple
 from glob import glob
+import json
 
 import torch
 
@@ -85,8 +86,9 @@ if __name__ == "__main__":
     # )
     saved_results = []
     accuracy = []
+    dataset_path = os.getenv('DATA_FOR_INFER')
 
-    for path_dir in glob('/media/mudro/0B8CDB8D01D869D6/VICTOR_MY_LOVE/datasets/siamese/data/New_data/*'):
+    for path_dir in glob(f'{dataset_path}/*'):
         predicted_tensor, images_pathes, label_image_path = predict_batch(path_dir)
         predicted_res = predicted_tensor.tolist()
         print(predicted_res)
@@ -108,5 +110,6 @@ if __name__ == "__main__":
             )
     print(len(accuracy))
     print(accuracy.count(True))
-    with open('/home/mudro/Documents/Projects/siamese/dirty_label.json', "w+") as json_file:
+    labels_path = os.getenv('LABELS_PATH')
+    with open(labels_path, "w+") as json_file:
         json.dump(saved_results, json_file, indent=4)

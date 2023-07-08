@@ -39,5 +39,7 @@ def transform_image(path_to_img_folder: str):
 
 
 if __name__ == "__main__":
-    for path_dir in glob('/media/mudro/0B8CDB8D01D869D6/VICTOR_MY_LOVE/datasets/siamese/data/labeled/*_false'):
+    dataset_labeled = os.getenv('LABELED_DS_TRAIN')
+
+    for path_dir in glob(f'{dataset_labeled}/*_false'):
         transform_image(path_dir)

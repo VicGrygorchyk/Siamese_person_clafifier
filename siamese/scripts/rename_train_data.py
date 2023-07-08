@@ -1,6 +1,5 @@
 from typing import List, TypedDict
 import json
-from glob import glob
 import os
 
 
@@ -30,4 +29,5 @@ def main(path_to_file):
 
 
 if __name__ == "__main__":
-    main('/home/mudro/Documents/Projects/siamese/dirty_label.json')
+    labels_path = os.getenv('LABELS_PATH')
+    main(labels_path)

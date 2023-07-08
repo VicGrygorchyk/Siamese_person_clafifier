@@ -1,3 +1,4 @@
+import os
 from typing import List
 from glob import glob
 import json
@@ -57,5 +58,7 @@ class DatasetJSONCreator:
 
 
 if __name__ == "__main__":
-    json_creator = DatasetJSONCreator("/media/mudro/0B8CDB8D01D869D6/VICTOR_MY_LOVE/datasets/siamese/data/labeled")
-    json_creator.save_to_json('/home/mudro/Documents/Projects/siamese/labels_data.json')
+    dataset_labeled = os.getenv('LABELED_DS_TRAIN')
+    json_creator = DatasetJSONCreator(dataset_labeled)
+    dataset_json = os.getenv('DATASET_PATH')
+    json_creator.save_to_json(dataset_json)
