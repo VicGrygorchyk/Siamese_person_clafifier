@@ -26,7 +26,6 @@ class SiameseNN(nn.Module):
         self.scaled_dot_attn = ScaledDotAttnModule()
 
         self.backbone.apply(self.init_weights)
-        self.fc.apply(self.init_weights)
 
     def init_weights(self, m):
         if isinstance(m, nn.Linear):
