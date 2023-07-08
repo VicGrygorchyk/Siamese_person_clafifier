@@ -1,9 +1,11 @@
 import os
+import sys
 from typing import List
 from glob import glob
 import json
 from dataclasses import asdict
 
+sys.path.append('./')
 from siamese.custom_types import Category, ImageItem
 
 

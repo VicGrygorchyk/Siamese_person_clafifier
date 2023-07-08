@@ -1,7 +1,9 @@
 import os
+import sys
 from glob import glob
 from random import random
 
+sys.path.append('./')
 from siamese.preprocess import image_helper
 
 
