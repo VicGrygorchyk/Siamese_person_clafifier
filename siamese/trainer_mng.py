@@ -1,10 +1,10 @@
 from typing import TYPE_CHECKING
 
 from numpy import average
-import torch
+
 from torch.utils.data import DataLoader, random_split
 from torch.optim import AdamW
-from torch.nn import Module, BCELoss
+from torch.nn import Module, BCEWithLogitsLoss
 from mlflow import log_metric, log_param
 import lightning.pytorch as pl
 
@@ -45,8 +45,8 @@ class ModelTrainingWrapper(pl.LightningModule):
         self.train_ds, self.valid_ds, self.test_ds = random_split(dataset, [0.7, 0.15, 0.15])  # type: PersonsImages
         log_param('starting learning rate', LEARNING_RATE)
         log_param('weight decay', WEIGHT_DECAY)
-        log_param('Loss function', 'BCELoss')
-        self.criterion = BCELoss()
+        log_param('Loss function', 'BCEWithLogitsLoss')
+        self.criterion = BCEWithLogitsLoss()
         self.learning_rate = learning_rate
         self.weight_decay = weight_decay
         self.save_chpt_path = save_chpt_path
@@ -68,7 +68,7 @@ class ModelTrainingWrapper(pl.LightningModule):
         lbl_images, target_imgs, labels = batch
         logits = self.backbone(lbl_images, target_imgs)
 
-        logits = logits.squeeze(dim=1)
+        # logits = logits.squeeze(dim=1)
 
         loss = self.criterion(logits, labels.float())
         loss_item = loss.item()
@@ -85,7 +85,7 @@ class ModelTrainingWrapper(pl.LightningModule):
     def validation_step(self, batch, batch_idx):
         lbl_images, target_imgs, labels = batch
         logits = self.backbone(lbl_images, target_imgs)
-        logits = logits.squeeze(dim=1)
+        # logits = logits.squeeze(dim=1)
 
         loss = self.criterion(logits, labels.float())
         loss_item = loss.item()
@@ -107,7 +107,7 @@ class ModelTrainingWrapper(pl.LightningModule):
     def test_step(self, batch, batch_idx):
         lbl_images, target_imgs, labels = batch
         logits = self.backbone(lbl_images, target_imgs)
-        logits = logits.squeeze(dim=1)
+        # logits = logits.squeeze(dim=1)
 
         loss = self.criterion(logits, labels.float())
         log_metric('test loss', loss, batch_idx)

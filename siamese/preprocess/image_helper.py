@@ -239,6 +239,77 @@ def get_template_matching(source, photo_to_compare, test_show=False):
     return image_matched, matched_in_photo, max_val_1, max_val_2
 
 
+def get_best_match(image_source1, image_source2):
+    """ Iterate through two images, get best matches.
+    Makes diff variation of scale to find best match.
+    """
+    img_original1, img_original2 = image_source1.copy(), image_source2.copy()
+
+    # case 1
+    img_resized_1, img_resized_2 = \
+        resize_2_images(img_original1, img_original2)
+    img_resized1, img_resized2, max_val_1, max_val_2 = get_template_matching(
+        img_resized_1.copy(), img_resized_2.copy()
+    )
+    max_val_resized = max_val_2 if max_val_2 > max_val_1 else max_val_1
+    # not correct result, extract .1 from final max val
+    max_val_resized = max_val_resized - 0.1 if max_val_resized > 0 else 0
+
+    # Prepare for next cases
+    img_scaled1, img_scaled2 = \
+        scale_images(img_original1, img_original2)
+
+    # case 2
+    try:
+        img_cropped_resized_height1, img_cropped_resized_height2 = \
+            resize_images_height(img_scaled1, img_scaled2)
+        img_cropped_resized_height1, img_cropped_resized_height2, max_val_1, max_val_2 = \
+            get_template_matching(img_cropped_resized_height1,
+                                       img_cropped_resized_height2)
+        max_val_resized_height = max_val_2 if max_val_2 > max_val_1 else max_val_1
+    except cv2.error:
+        max_val_resized_height = 0
+    # case 3
+    try:
+        img_cropped_resized_width1, img_cropped_resized_width2 = \
+            resize_images_width(img_scaled1, img_scaled2)
+        img_cropped_resized_width1, img_cropped_resized_width2, max_val_1, max_val_2 = \
+            get_template_matching(img_cropped_resized_width1,
+                                       img_cropped_resized_width2)
+        max_val_resized_width = max_val_2 if max_val_2 > max_val_1 else max_val_1
+    except cv2.error:
+        max_val_resized_width = 0
+    # case 4
+    try:
+        img_cropped_resized1, img_cropped_resized2 = \
+            resize_2_images(img_scaled1, img_scaled2)
+        img_cropped_resized1, img_cropped_resized2, max_val_1, max_val_2 = \
+            get_template_matching(img_cropped_resized1,
+                                       img_cropped_resized2)
+        max_val_cropped_scaled = max_val_2 if max_val_2 > max_val_1 else max_val_1
+    except cv2.error:
+        max_val_cropped_scaled = 0
+    # ----- Find best match ---------
+    max_final_val = max((max_val_resized,
+                         max_val_resized_height,
+                         max_val_resized_width,
+                         max_val_cropped_scaled
+                         ))
+
+    switch = {
+        max_val_resized: (img_resized1, img_resized2),
+        max_val_resized_height:
+            (img_cropped_resized_height1, img_cropped_resized_height2),
+        max_val_resized_width: (img_cropped_resized_width1, img_cropped_resized_width2),
+        max_val_cropped_scaled: (img_cropped_resized1, img_cropped_resized2)
+    }
+
+    image_1, image_2 = switch.get(max_final_val, (img_original1, img_original2))
+    if any((image_1.shape[0] < 80, image_1.shape[1] < 80, image_2.shape[0] < 80, image_2.shape[1] < 80)):
+        return img_resized_1, img_resized_2
+    return image_1, image_2
+
+
 def _find_best_scale(source_img, templ_img):
     """Scale template to find best match.
     Return best matched image and max Value of match
@@ -319,22 +390,3 @@ def rotate(image: 'np_typing.NDArray', degree: int = 25) -> 'np_typing.NDArray':
     M = cv2.getRotationMatrix2D((cX, cY), degree, 1.0)
     rotated = cv2.warpAffine(image, M, (w, h))
     return rotated
-
-
-def apply_color_filter(image, filter_color):
-
-    # Convert the filter color from BGR to HSV
-    filter_color_hsv = cv2.cvtColor(np.uint8([[filter_color]]), cv2.COLOR_BGR2HSV)[0][0]
-
-    # Define the lower and upper bounds for the filter color in HSV
-    lower_bound = np.array([filter_color_hsv[0] - 10, 50, 50])
-    upper_bound = np.array([filter_color_hsv[0] + 10, 255, 255])
-
-    # Convert the image from BGR to HSV
-    image_hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-
-    # Create a mask based on the filter color bounds
-    mask = cv2.inRange(image_hsv, lower_bound, upper_bound)
-
-    # Apply the mask to the original image
-    filtered_image = cv2.bitwise_and(image, image, mask=mask)

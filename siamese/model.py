@@ -25,7 +25,7 @@ class SiameseNN(nn.Module):
 
         # add linear layers to compare between the features of the two images
         self.fc = nn.Sequential(
-            nn.Linear(672 * 2, 128),
+            nn.Linear(672, 128),
             nn.ReLU(),
             nn.Dropout(0.3),
             nn.Linear(128, 1)
@@ -56,15 +56,26 @@ class SiameseNN(nn.Module):
 
         attention_output = torch.pow(self.scaled_dot_attn(output1, output2, output1), 2)
         attention_output = nn.functional.normalize(attention_output, dim=1)
+        # print("===== attention_output ", attention_output.shape)
+        #
+        # print("===== output1 ", output1.shape)
+        # print("===== output2 ", output2.shape)
 
-        output = torch.pow((output1 - output2), 2)
-        output = nn.functional.normalize(output, dim=1)
+        output = 1 - torch.pow(
+            nn.functional.cosine_similarity(output1, output2),
+            2
+        )
+        # print("===== after cosine output ", output)
+        # print("===== output shape ", output.shape)
 
-        combined_output = torch.cat((attention_output, output), dim=1)
+        # output = nn.functional.normalize(output, dim=0)
+        # print("output shape", output.shape)
 
-        output = self.fc(combined_output)
+        # combined_output = torch.cat((attention_output, output), dim=1)
 
-        output = self.sigmoid(output)
-        # print("===output ", output)
+        # output = self.fc(output)
+
+        # output = self.sigmoid(output)
+        # print("===after sigmoid output ", output)
 
         return output
