@@ -13,7 +13,7 @@ class TransformHelper:
     def __init__(self):
         self.transformation = transforms.Compose([
             transforms.ToTensor(),
-            transforms.Resize((400, 400), antialias=True),
+            transforms.Resize((240, 240), antialias=True),
             transforms.Normalize(mean=[MEAN_COEF, MEAN_COEF, MEAN_COEF],
                                  std=[STD_COEF, STD_COEF, STD_COEF])
         ])

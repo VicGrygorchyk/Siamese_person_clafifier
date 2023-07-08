@@ -108,13 +108,12 @@ class ModelTrainingWrapper(pl.LightningModule):
         lbl_images, target_imgs, labels = batch
         logits = self.backbone(lbl_images, target_imgs)
         logits = logits.squeeze(dim=1)
-        labels = torch.squeeze(labels, dim=1)
+
         loss = self.criterion(logits, labels.float())
         log_metric('test loss', loss, batch_idx)
 
         self.test_loss += loss.item()
         self.test_accuracy.append(get_accuracy(logits, labels))
-        self.log("test_loss", loss, prog_bar=True)
 
     def on_test_start(self) -> None:
         self.test_loss = 0
