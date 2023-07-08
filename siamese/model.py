@@ -23,14 +23,6 @@ class SiameseNN(nn.Module):
         backbone_layers = list(self.net_org.children())
         self.backbone = torch.nn.Sequential(*backbone_layers[:-1])
 
-        # add linear layers to compare between the features of the two images
-        self.fc = nn.Sequential(
-            nn.Linear(672, 128),
-            nn.ReLU(),
-            nn.Dropout(0.3),
-            nn.Linear(128, 1)
-        )
-
         self.scaled_dot_attn = ScaledDotAttnModule()
 
         self.sigmoid = nn.Sigmoid()
@@ -54,8 +46,8 @@ class SiameseNN(nn.Module):
         output1 = self.forward_once(input1)
         output2 = self.forward_once(input2)
 
-        attention_output = torch.pow(self.scaled_dot_attn(output1, output2, output1), 2)
-        attention_output = nn.functional.normalize(attention_output, dim=1)
+        # attention_output = torch.pow(self.scaled_dot_attn(output1, output2, output1), 2)
+        # attention_output = nn.functional.normalize(attention_output, dim=1)
         # print("===== attention_output ", attention_output.shape)
         #
         # print("===== output1 ", output1.shape)
@@ -68,12 +60,7 @@ class SiameseNN(nn.Module):
         # print("===== after cosine output ", output)
         # print("===== output shape ", output.shape)
 
-        # output = nn.functional.normalize(output, dim=0)
-        # print("output shape", output.shape)
-
         # combined_output = torch.cat((attention_output, output), dim=1)
-
-        # output = self.fc(output)
 
         # output = self.sigmoid(output)
         # print("===after sigmoid output ", output)
