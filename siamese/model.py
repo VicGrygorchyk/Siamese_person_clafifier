@@ -25,8 +25,6 @@ class SiameseNN(nn.Module):
 
         self.scaled_dot_attn = ScaledDotAttnModule()
 
-        self.sigmoid = nn.Sigmoid()
-
         self.backbone.apply(self.init_weights)
         self.fc.apply(self.init_weights)
 
@@ -61,8 +59,5 @@ class SiameseNN(nn.Module):
         # print("===== output shape ", output.shape)
 
         # combined_output = torch.cat((attention_output, output), dim=1)
-
-        # output = self.sigmoid(output)
-        # print("===after sigmoid output ", output)
 
         return output
