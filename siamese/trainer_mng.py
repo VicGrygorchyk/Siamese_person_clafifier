@@ -1,157 +1,127 @@
 from typing import TYPE_CHECKING
 
-import torch
 from numpy import average
-from accelerate import Accelerator
-from torch.optim import AdamW, lr_scheduler
-from torch.nn import Module, BCEWithLogitsLoss
+import torch
+from torch.utils.data import DataLoader, random_split
+from torch.optim import AdamW
+from torch.nn import Module, BCELoss
 from mlflow import log_metric, log_param
-from tqdm.auto import tqdm
+import lightning.pytorch as pl
 
 if TYPE_CHECKING:
     from torch import Tensor
     from torch.nn import Module
-    from torch.utils.data import DataLoader
     from torch.optim import Optimizer
+    from dataset import PersonsImages
 
-LEARNING_RATE = 3e-3
+LEARNING_RATE = 2e-5
 WEIGHT_DECAY = 0.01
 CLS_THRESHOLD = 0.5
 
 
-def get_accuracy(logit: 'Tensor', label: 'Tensor'):
-    label = torch.squeeze(label)
-    print("label ", label)
+def get_accuracy(logit: 'Tensor', labels: 'Tensor'):
     print("logit ", logit)
+    print("label ", labels)
 
-    pred = torch.argmax(logit, 1)
+    pred = (logit > CLS_THRESHOLD).float()
     print(f"predicted {pred}")
-    return (pred == label).sum().item() / len(label)
+    return (pred == labels).sum().item() / len(labels)
 
 
-class TrainerManager:
+class ModelTrainingWrapper(pl.LightningModule):
 
-    def __init__(self, model: 'Module', save_dir: str,
-                 train_dl: 'DataLoader', valid_dl: 'DataLoader', test_dl: 'DataLoader',
-                 num_epochs: int = 20):
-        self.model = model
-        self.save_dir = save_dir
+    def __init__(self,
+                 backbone: 'Module',
+                 batch_size: int,
+                 dataset: 'PersonsImages',
+                 save_chpt_path: str,
+                 learning_rate: float = LEARNING_RATE,
+                 weight_decay: float = WEIGHT_DECAY):
+        super().__init__()
+        # self.save_hyperparameters(ignore=['backbone', 'dataset'])
+        self.backbone = backbone
+        self.batch_size = batch_size
+        self.dataset = dataset
+        self.train_ds, self.valid_ds, self.test_ds = random_split(dataset, [0.7, 0.15, 0.15])  # type: PersonsImages
         log_param('starting learning rate', LEARNING_RATE)
         log_param('weight decay', WEIGHT_DECAY)
-        self.optimizer = AdamW(self.model.parameters(), lr=LEARNING_RATE, weight_decay=WEIGHT_DECAY)
+        log_param('Loss function', 'BCELoss')
+        self.criterion = BCELoss()
+        self.learning_rate = learning_rate
+        self.weight_decay = weight_decay
+        self.save_chpt_path = save_chpt_path
+        self.eval_loss = 0.0
+        self.eval_accuracy = []
+        self.test_loss = 0.0
+        self.test_accuracy = []
+
+    def train_dataloader(self):
+        return DataLoader(self.train_ds, shuffle=True, batch_size=self.batch_size, num_workers=10)
+
+    def val_dataloader(self):
+        return DataLoader(self.valid_ds, shuffle=False, batch_size=12, num_workers=10)
+
+    def test_dataloader(self):
+        return DataLoader(self.test_ds, shuffle=False, batch_size=12, num_workers=10)
+
+    def training_step(self, batch, batch_idx):
+        lbl_images, target_imgs, labels = batch
+        logits = self.backbone(lbl_images, target_imgs)
+
+        logits = logits.squeeze(dim=1)
+
+        loss = self.criterion(logits, labels.float())
+        loss_item = loss.item()
+        log_metric('train loss', loss_item, batch_idx)
+
+        self.log("train_loss", loss, prog_bar=True)
+        return loss
+
+    def configure_optimizers(self) -> 'Optimizer':
+        optimizer = AdamW(self.parameters(), lr=self.learning_rate, weight_decay=self.weight_decay)
         log_param('Optimizer', 'AdamW')
-        self.criterion = BCEWithLogitsLoss()
-        log_param('Loss function', 'BCEWithLogitsLoss')
-        self.train_dataloader = train_dl
-        self.eval_dataloader = valid_dl
-        self.test_dataloader = test_dl
+        return optimizer
 
-        self.lr_scheduler = lr_scheduler.StepLR(
-            optimizer=self.optimizer,
-            step_size=5,
-            gamma=0.1
-        )
-        log_param('LR scheduler ', 'lr_scheduler.StepLR')
+    def validation_step(self, batch, batch_idx):
+        lbl_images, target_imgs, labels = batch
+        logits = self.backbone(lbl_images, target_imgs)
+        logits = logits.squeeze(dim=1)
 
-        self.accelerator = Accelerator(gradient_accumulation_steps=16)
-        # override model, optim and dataloaders to allow Accelerator to autohandle `device`
-        self.model, self.optimizer, self.train_dataloader, self.eval_dataloader, \
-            self.test_dataloader, self.criterion, self.lr_scheduler = \
-            self.accelerator.prepare(
-                self.model,
-                self.optimizer,
-                self.train_dataloader,
-                self.eval_dataloader,
-                self.test_dataloader,
-                self.criterion,
-                self.lr_scheduler
-            )  # type: Module, Optimizer, DataLoader, DataLoader, DataLoader, BCEWithLogitsLoss, lr_scheduler.StepLR
-        self.model = torch.compile(self.model)
-        len_train_dataloader = len(self.train_dataloader)
-        num_update_steps_per_epoch = len_train_dataloader
-        self.num_epochs = num_epochs
-        self.num_training_steps = self.num_epochs * num_update_steps_per_epoch
+        loss = self.criterion(logits, labels.float())
+        loss_item = loss.item()
+        log_metric('eval loss', loss, batch_idx)
+        self.eval_loss += loss_item
+        self.eval_accuracy.append(get_accuracy(logits, labels))
+        self.log("eval_loss", loss, prog_bar=True)
 
-    def run(self):
-        start_eval_loss = torch.inf
-        for epoch in range(self.num_epochs):
-            with self.accelerator.accumulate(self.model):
-                print(f'EPOCH {epoch}')
-                self.train(epoch)
-                eval_loss = self.evaluate()
-                # save the model if current eval loss is better than prev
-                if eval_loss < start_eval_loss:
-                    self.accelerator.wait_for_everyone()
-                    unwrapped_model = self.accelerator.unwrap_model(self.model)
+    def on_validation_start(self) -> None:
+        self.eval_loss = 0
+        self.eval_accuracy = []
 
-                    print(f'Saving a new version of the unwrapped_model {self.save_dir}')
-                    torch.save(unwrapped_model.state_dict(), self.save_dir)
-                    start_eval_loss = eval_loss
+    def on_validation_epoch_end(self) -> None:
+        eval_loss = self.eval_loss / len(self.val_dataloader())
+        self.log("Validation loss", eval_loss)
+        self.log("Validation accuracy", average(self.eval_accuracy))
+        print("Validation accuracy ", average(self.eval_accuracy))
 
-    def train(self, epoch):
-        self.model.train(True)
-        train_loss = 0.0
-        step = 1
-        for data in tqdm(self.train_dataloader):
-            with self.accelerator.accumulate(self.model):
-                lbl_images, target_imgs, labels, labels_onehot = data
-                logits = self.model(lbl_images, target_imgs)
-                self.optimizer.zero_grad()
+    def test_step(self, batch, batch_idx):
+        lbl_images, target_imgs, labels = batch
+        logits = self.backbone(lbl_images, target_imgs)
+        logits = logits.squeeze(dim=1)
+        labels = torch.squeeze(labels, dim=1)
+        loss = self.criterion(logits, labels.float())
+        log_metric('test loss', loss, batch_idx)
 
-                loss = self.criterion(logits, labels_onehot.float())
-                loss_item = loss.item()
-                log_metric('train loss', loss_item, step)
-                train_loss += loss_item
+        self.test_loss += loss.item()
+        self.test_accuracy.append(get_accuracy(logits, labels))
+        self.log("test_loss", loss, prog_bar=True)
 
-                self.accelerator.backward(loss)
-                self.optimizer.step()
+    def on_test_start(self) -> None:
+        self.test_loss = 0
+        self.test_accuracy = []
 
-                step += 1
-        self.lr_scheduler.step(epoch)
-        fin_loss = train_loss / len(self.train_dataloader)
-        print(f"Total train loss is {fin_loss}")
-
-    def evaluate(self):
-        eval_loss = 0
-        acc = []
-        step = 1
-
-        self.model.eval()
-        unwrapped_model = self.accelerator.unwrap_model(self.model)
-        with torch.no_grad():
-            for data in tqdm(self.eval_dataloader):
-                lbl_images, target_imgs, labels, labels_onehot = data
-                logits = unwrapped_model(lbl_images, target_imgs)
-
-                loss = self.criterion(logits, labels_onehot.float())
-                loss_item = loss.item()
-                log_metric('eval loss', loss, step)
-                eval_loss += loss_item
-
-                acc.append(get_accuracy(logits, labels))
-
-                log_metric('eval accuracy', average(acc), step)
-                step += 1
-        eval_loss = eval_loss / len(self.eval_dataloader)
-        print(f"Eval loss {eval_loss}. Accuracy: {average(acc)}")
-        return eval_loss
-
-    def test(self):
-        test_loss = 0.0
-        acc = []
-        step = 1
-        self.model.eval()
-        unwrapped_model = self.accelerator.unwrap_model(self.model)
-        with torch.no_grad():
-            for data in tqdm(self.test_dataloader):
-                lbl_images, target_imgs, labels, labels_onehot = data
-                logits = unwrapped_model(lbl_images, target_imgs)
-                loss = self.criterion(logits, labels_onehot.float())
-                log_metric('eval loss', loss, step)
-
-                test_loss += loss.item()
-                acc.append(get_accuracy(logits, labels))
-
-                step += 1
-        test_loss = test_loss / len(self.test_dataloader)
-        print(f"Test loss {test_loss}. Accuracy: {average(acc)}")
+    def on_test_epoch_end(self) -> None:
+        test_loss = self.test_loss / len(self.test_dataloader())
+        self.log("Test loss", test_loss)
+        self.log("Test accuracy", average(self.test_accuracy))
+        print("Test accuracy ", average(self.test_accuracy))

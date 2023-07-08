@@ -1,40 +1,46 @@
 import os
 
-from torch.utils.data import DataLoader, random_split
-from torch import cuda
-from mlflow import start_run
-
-from siamese.model import SiameseNN
+import torch
 from siamese.dataset import PersonsImages
-from siamese.trainer_mng import TrainerManager
 
 EPOCH = 50
 
 
 DATASET_PATH = os.getenv("DATASET_PATH")
-SAVE_MODEL_PATH = os.getenv("SAVE_MODEL_PATH")
 
 
 if __name__ == "__main__":
-    cuda.empty_cache()
     # dataset
     dataset = PersonsImages(DATASET_PATH)
 
-    with start_run(description=f"Run with epoch ${EPOCH} and Custom Triplet loss, small dataset"):
-        train_ds, valid_ds, test_ds = random_split(dataset, [0.7, 0.15, 0.15])  # type: PersonsImages
+    means1 = torch.tensor([0], dtype=torch.float)
+    std1 = torch.tensor([0], dtype=torch.float)
+    means2 = torch.tensor([0], dtype=torch.float)
+    std2 = torch.tensor([0], dtype=torch.float)
+    means3 = torch.tensor([0], dtype=torch.float)
+    std3 = torch.tensor([0], dtype=torch.float)
 
-        # dataloader
-        train_dl = DataLoader(train_ds, shuffle=True, batch_size=4)
-        valid_dl = DataLoader(valid_ds, shuffle=False, batch_size=12)
-        test_dl = DataLoader(test_ds, shuffle=False, batch_size=12)
+    for img_label, img_target, _, in dataset:
+        img_label = img_label.unsqueeze(dim=1)
+        img_target = img_target.unsqueeze(dim=1)
+        means1 += img_label[0].mean()
+        means1 += img_target[0].mean()
+        std1 += img_label[0].std()
+        std1 += img_target[0].std()
 
-        # model
-        model = SiameseNN()
-        # train
-        trainer = TrainerManager(
-            model,
-            SAVE_MODEL_PATH,
-            train_dl, valid_dl, test_dl, num_epochs=EPOCH
-        )
-        trainer.run()
-        trainer.test()
+        means2 += img_label[1].mean()
+        means2 += img_target[1].mean()
+        std2 += img_label[1].std()
+        std2 += img_target[1].std()
+
+        means3 += img_label[2].mean()
+        means3 += img_target[2].mean()
+        std3 += img_label[2].std()
+        std3 += img_target[2].std()
+
+    print(means1 / len(dataset))
+    print(std1 / len(dataset))
+    print(means2 / len(dataset))
+    print(std2 / len(dataset))
+    print(means3 / len(dataset))
+    print(std3 / len(dataset))

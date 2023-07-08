@@ -5,7 +5,7 @@ from torchvision import transforms
 if TYPE_CHECKING:
     from torch import TensorType
 
-MEAN_COEF = 0.8
+MEAN_COEF = 0.85
 STD_COEF = 0.5
 
 
@@ -13,7 +13,7 @@ class TransformHelper:
     def __init__(self):
         self.transformation = transforms.Compose([
             transforms.ToTensor(),
-            transforms.Resize((350, 350)),
+            transforms.Resize((400, 400), antialias=True),
             transforms.Normalize(mean=[MEAN_COEF, MEAN_COEF, MEAN_COEF],
                                  std=[STD_COEF, STD_COEF, STD_COEF])
         ])
