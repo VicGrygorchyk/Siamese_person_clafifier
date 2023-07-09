@@ -1,22 +1,30 @@
+import os
 from typing import TYPE_CHECKING
 
 from numpy import average
 
 from torch.utils.data import DataLoader, random_split
 from torch.optim import AdamW
-from torch.nn import Module, BCEWithLogitsLoss
+from torch.nn import BCEWithLogitsLoss
 from mlflow import log_metric, log_param
 import lightning.pytorch as pl
 
+from siamese.dataset import PersonsImages
+from siamese.model import SiameseNN
+
 if TYPE_CHECKING:
     from torch import Tensor
-    from torch.nn import Module
     from torch.optim import Optimizer
-    from dataset import PersonsImages
 
+
+START_BATCH_SIZE = 52
+
+DATASET_PATH = os.getenv("DATASET_PATH")
 LEARNING_RATE = 2e-5
 WEIGHT_DECAY = 0.01
 CLS_THRESHOLD = 0.5
+
+dataset = PersonsImages(DATASET_PATH)
 
 
 def get_accuracy(logit: 'Tensor', labels: 'Tensor'):
@@ -30,26 +38,19 @@ def get_accuracy(logit: 'Tensor', labels: 'Tensor'):
 
 class ModelTrainingWrapper(pl.LightningModule):
 
-    def __init__(self,
-                 backbone: 'Module',
-                 batch_size: int,
-                 dataset: 'PersonsImages',
-                 save_chpt_path: str,
-                 learning_rate: float = LEARNING_RATE,
-                 weight_decay: float = WEIGHT_DECAY):
+    def __init__(self):
         super().__init__()
-        # self.save_hyperparameters(ignore=['backbone', 'dataset'])
-        self.backbone = backbone
-        self.batch_size = batch_size
+        self.save_hyperparameters(ignore=['backbone', 'dataset', 'save_chpt_path'])
+        self.backbone = SiameseNN()
+        self.batch_size = START_BATCH_SIZE
         self.dataset = dataset
         self.train_ds, self.valid_ds, self.test_ds = random_split(dataset, [0.7, 0.15, 0.15])  # type: PersonsImages
         log_param('starting learning rate', LEARNING_RATE)
         log_param('weight decay', WEIGHT_DECAY)
         log_param('Loss function', 'BCEWithLogitsLoss')
         self.criterion = BCEWithLogitsLoss()
-        self.learning_rate = learning_rate
-        self.weight_decay = weight_decay
-        self.save_chpt_path = save_chpt_path
+        self.learning_rate = LEARNING_RATE
+        self.weight_decay = WEIGHT_DECAY
         self.eval_loss = 0.0
         self.eval_accuracy = []
         self.test_loss = 0.0
@@ -68,7 +69,7 @@ class ModelTrainingWrapper(pl.LightningModule):
         lbl_images, target_imgs, labels = batch
         logits = self.backbone(lbl_images, target_imgs)
 
-        # logits = logits.squeeze(dim=1)
+        logits = logits.squeeze(dim=1)
 
         loss = self.criterion(logits, labels.float())
         loss_item = loss.item()
@@ -85,7 +86,7 @@ class ModelTrainingWrapper(pl.LightningModule):
     def validation_step(self, batch, batch_idx):
         lbl_images, target_imgs, labels = batch
         logits = self.backbone(lbl_images, target_imgs)
-        # logits = logits.squeeze(dim=1)
+        logits = logits.squeeze(dim=1)
 
         loss = self.criterion(logits, labels.float())
         loss_item = loss.item()
@@ -107,7 +108,7 @@ class ModelTrainingWrapper(pl.LightningModule):
     def test_step(self, batch, batch_idx):
         lbl_images, target_imgs, labels = batch
         logits = self.backbone(lbl_images, target_imgs)
-        # logits = logits.squeeze(dim=1)
+        logits = logits.squeeze(dim=1)
 
         loss = self.criterion(logits, labels.float())
         log_metric('test loss', loss, batch_idx)

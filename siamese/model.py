@@ -24,7 +24,20 @@ class SiameseNN(nn.Module):
         self.backbone = torch.nn.Sequential(*backbone_layers[:-1])
 
         self.scaled_dot_attn = ScaledDotAttnModule()
+        self.fc = torch.nn.Sequential(
+            torch.nn.Linear(672, 128),
+            torch.nn.ReLU(),
+            torch.nn.Dropout(0.3),
+            torch.nn.Linear(128, 32),
+            torch.nn.ReLU(),
+            torch.nn.Dropout(0.3),
+            torch.nn.Linear(32, 1)
+        )
 
+        self.fc_final = torch.nn.Linear(2, 1)
+
+        self.fc_final.apply(self.init_weights)
+        self.fc.apply(self.init_weights)
         self.backbone.apply(self.init_weights)
 
     def init_weights(self, m):
@@ -43,20 +56,21 @@ class SiameseNN(nn.Module):
         output1 = self.forward_once(input1)
         output2 = self.forward_once(input2)
 
-        # attention_output = torch.pow(self.scaled_dot_attn(output1, output2, output1), 2)
-        # attention_output = nn.functional.normalize(attention_output, dim=1)
-        # print("===== attention_output ", attention_output.shape)
-        #
-        # print("===== output1 ", output1.shape)
-        # print("===== output2 ", output2.shape)
-
         output = 1 - torch.pow(
             nn.functional.cosine_similarity(output1, output2),
             2
         )
-        # print("===== after cosine output ", output)
-        # print("===== output shape ", output.shape)
+        output = output.unsqueeze(dim=1)
+        # print("===== after cosine output ", output.shape)
+        # print("===== after cosine output ", output.shape)
 
-        # combined_output = torch.cat((attention_output, output), dim=1)
+        attention_output = self.scaled_dot_attn(output1, output2, output1)
+        attention_output = nn.functional.normalize(attention_output, dim=1)
+        attention_output = self.fc(attention_output)
+        # print("===== attention_output ", attention_output)
+        # print("===== attention_output shape ", attention_output.shape)
+        output = attention_output + output
+        # print("===== output ", output)
+        # print("===== output shape ", output.shape)
 
         return output
