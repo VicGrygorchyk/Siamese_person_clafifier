@@ -24,9 +24,6 @@ LEARNING_RATE = 2e-5
 WEIGHT_DECAY = 0.01
 CLS_THRESHOLD = 0.5
 
-dataset = PersonsImages(DATASET_PATH)
-
-
 def get_accuracy(logit: 'Tensor', labels: 'Tensor'):
     print("logit ", logit)
     print("label ", labels)
@@ -43,8 +40,8 @@ class ModelTrainingWrapper(pl.LightningModule):
         self.save_hyperparameters(ignore=['backbone', 'dataset', 'save_chpt_path'])
         self.backbone = SiameseNN()
         self.batch_size = START_BATCH_SIZE
-        self.dataset = dataset
-        self.train_ds, self.valid_ds, self.test_ds = random_split(dataset, [0.7, 0.15, 0.15])  # type: PersonsImages
+        self.dataset = PersonsImages(DATASET_PATH)
+        self.train_ds, self.valid_ds, self.test_ds = random_split(self.dataset, [0.7, 0.15, 0.15])  # type: PersonsImages
         log_param('starting learning rate', LEARNING_RATE)
         log_param('weight decay', WEIGHT_DECAY)
         log_param('Loss function', 'BCEWithLogitsLoss')

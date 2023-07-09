@@ -16,7 +16,7 @@ from siamese.model import SiameseNN
 from siamese.trainer_mng import ModelTrainingWrapper
 
 
-THRESHOLD = 0.34
+THRESHOLD = 0.37
 
 transformation = torch_transform.TransformHelper()
 with torch.no_grad():
