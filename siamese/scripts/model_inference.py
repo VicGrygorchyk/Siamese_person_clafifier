@@ -13,14 +13,21 @@ sys.path.append('./')
 from siamese.preprocess import image_helper, torch_transform
 from siamese.custom_types import Category
 from siamese.model import SiameseNN
+from siamese.trainer_mng import ModelTrainingWrapper
 
+
+THRESHOLD = 0.34
 
 transformation = torch_transform.TransformHelper()
 with torch.no_grad():
     siamese = SiameseNN()
-    siamese.load_state_dict(
-        torch.load(os.getenv("SAVE_MODEL_PATH"))
+    # siamese.load_state_dict(
+    # checkpoint = torch.load()
+    model = ModelTrainingWrapper.load_from_checkpoint(
+        f'{os.getenv("SAVE_MODEL_PATH")}epoch=41-step=546.ckpt',
     )
+    # print(checkpoint.keys())
+    siamese.eval()
 
 
 def use_model(imgs: 'torch.Tensor', other_imgs: 'torch.Tensor') -> torch.FloatTensor:
@@ -34,7 +41,7 @@ def use_model(imgs: 'torch.Tensor', other_imgs: 'torch.Tensor') -> torch.FloatTe
 def predict_one(img_target_path, img_label_path) -> int:
     img_label = image_helper.load_image(img_label_path)
     img_target = image_helper.load_image(img_target_path)
-    label_img, target_img = image_helper.resize_2_images(img_label, img_target)
+    label_img, target_img = image_helper.scale_images(img_label, img_target)
 
     label_img, target_img = transformation.transform_2_imgs(label_img, target_img)
     label_img = label_img.unsqueeze(dim=0)
@@ -42,7 +49,7 @@ def predict_one(img_target_path, img_label_path) -> int:
 
     predicted = use_model(label_img, target_img)
 
-    result = Category.SIMILAR.value if predicted.squeeze().item() <= 0.5 else Category.DIFFERENT.value
+    result = Category.SIMILAR.value if predicted.item() <= THRESHOLD else Category.DIFFERENT.value
     print(result)
     return result
 
@@ -64,7 +71,7 @@ def predict_batch(path_to_img_folder: str) -> Tuple['torch.Tensor', List, str]:
         print(f"file_path ${file_path}")
         image_with_label_copy = image_with_label.copy()
 
-        image_label_resized, img = image_helper.resize_2_images(image_with_label_copy, img)
+        image_label_resized, img = image_helper.scale_images(image_with_label_copy, img)
         image_label_transformed, img = transformation.transform_2_imgs(image_label_resized, img)
         images_labels.append(image_label_transformed)
         images_targets.append(img)
@@ -74,8 +81,7 @@ def predict_batch(path_to_img_folder: str) -> Tuple['torch.Tensor', List, str]:
 
     predicted = use_model(label_imgs, target_imgs)
 
-    result = torch.where(predicted > 0.5, Category.DIFFERENT.value, Category.SIMILAR.value)
-    result = result.squeeze()
+    result = torch.where(predicted > THRESHOLD, Category.DIFFERENT.value, Category.SIMILAR.value)
     return result, [file for file in files_path if '/user' not in file], image_with_label_path
 
 
@@ -89,17 +95,21 @@ if __name__ == "__main__":
     dataset_path = os.getenv('DATA_FOR_INFER')
 
     for path_dir in glob(f'{dataset_path}/*'):
+        if x := len(glob(f'{path_dir}/*')) <= 1:
+            print("========= ", x)
+            continue
+
         predicted_tensor, images_pathes, label_image_path = predict_batch(path_dir)
         predicted_res = predicted_tensor.tolist()
         print(predicted_res)
         label_category = predicted_res
         if isinstance(predicted_res, list):
-            zeros = predicted_res.count(0)
-            ones = predicted_res.count(1)
+            zeros = predicted_res.count([0])
+            ones = predicted_res.count([1])
             label_category = 0 if zeros > ones else 1
         for img_path in images_pathes:
-            expected = 0 if path_dir.endswith("true") else 1
-            accuracy.append(expected == label_category)
+            # expected = 0 if path_dir.endswith("true") else 1
+            # accuracy.append(expected == label_category)
             saved_results.append(
                 {
                     "folder": path_dir,
@@ -108,8 +118,8 @@ if __name__ == "__main__":
                     "target_img": img_path
                 }
             )
-    print(len(accuracy))
-    print(accuracy.count(True))
+    # print(len(accuracy))
+    # print(accuracy.count(True))
     labels_path = os.getenv('LABELS_PATH')
     with open(labels_path, "w+") as json_file:
         json.dump(saved_results, json_file, indent=4)
