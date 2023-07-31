@@ -1,4 +1,2 @@
-[core]
-    remote = dataset
 ['remote "dataset"']
-    url = /media/mudro/0B8CDB8D01D869D6/VICTOR_MY_LOVE/datasets/siamese/data
+    url = /media/mudro/Disk120Linux/datasets/siamese
