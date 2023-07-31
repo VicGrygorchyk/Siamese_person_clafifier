@@ -3,11 +3,12 @@ import os
 from torch import cuda
 from torch import compile as torch_compile
 from mlflow import start_run
+import mlflow
+from mlflow.models import infer_signature
 import lightning.pytorch as pl
 from lightning.pytorch.tuner import Tuner
 from lightning.pytorch.callbacks import StochasticWeightAveraging, ModelCheckpoint, EarlyStopping
 
-from siamese.model import SiameseNN
 from siamese.trainer_mng import ModelTrainingWrapper
 
 EPOCH = 10
@@ -21,28 +22,31 @@ if __name__ == "__main__":
     # dataset
 
     with start_run(description=f"Run {EPOCH} epochs, BCElogits"):
-        model = SiameseNN()
         model_wrapped = ModelTrainingWrapper()
         # model_wrapped = torch_compile(model_wrapped)
 
         trainer = pl.Trainer(
             min_epochs=1,
             max_epochs=EPOCH,
-            accumulate_grad_batches=3,
+            accumulate_grad_batches=8,
             log_every_n_steps=10,
             callbacks=[
                 StochasticWeightAveraging(swa_lrs=1e-2),
-                ModelCheckpoint(dirpath=SAVE_MODEL_PATH, save_top_k=2, monitor="eval_loss"),
+                ModelCheckpoint(dirpath=SAVE_MODEL_PATH, save_top_k=3, monitor="eval_loss"),
                 EarlyStopping(monitor='eval_loss', patience=5)
             ],
             default_root_dir=SAVE_MODEL_PATH
         )
 
         tuner = Tuner(trainer)
-        if os.getenv("FIND_BATCH_SIZE"):
+        if eval(os.getenv("FIND_BATCH_SIZE")):
             tuner.scale_batch_size(model_wrapped, mode='binsearch')
-        if os.getenv("FIND_LR_RATE"):
+        if eval(os.getenv("FIND_LR_RATE")):
             tuner.lr_find(model_wrapped, num_training=10)
 
         trainer.fit(model=model_wrapped)
         trainer.test(model_wrapped)
+
+
+        # signature = infer_signature(X_test, predictions)
+        # mlflow.pytorch.log_model(rf, "model", signature=signature)

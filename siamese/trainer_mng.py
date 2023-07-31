@@ -17,12 +17,13 @@ if TYPE_CHECKING:
     from torch.optim import Optimizer
 
 
-START_BATCH_SIZE = 52
+START_BATCH_SIZE = 16
 
 DATASET_PATH = os.getenv("DATASET_PATH")
-LEARNING_RATE = 2e-5
+LEARNING_RATE = 2e-4
 WEIGHT_DECAY = 0.01
-CLS_THRESHOLD = 0.5
+CLS_THRESHOLD = 0.475
+
 
 def get_accuracy(logit: 'Tensor', labels: 'Tensor'):
     print("logit ", logit)
@@ -41,7 +42,7 @@ class ModelTrainingWrapper(pl.LightningModule):
         self.backbone = SiameseNN()
         self.batch_size = START_BATCH_SIZE
         self.dataset = PersonsImages(DATASET_PATH)
-        self.train_ds, self.valid_ds, self.test_ds = random_split(self.dataset, [0.7, 0.15, 0.15])  # type: PersonsImages
+        self.train_ds, self.valid_ds, self.test_ds = random_split(self.dataset, [0.7, 0.1, 0.2])  # type: PersonsImages
         log_param('starting learning rate', LEARNING_RATE)
         log_param('weight decay', WEIGHT_DECAY)
         log_param('Loss function', 'BCEWithLogitsLoss')
@@ -122,3 +123,6 @@ class ModelTrainingWrapper(pl.LightningModule):
         self.log("Test loss", test_loss)
         self.log("Test accuracy", average(self.test_accuracy))
         print("Test accuracy ", average(self.test_accuracy))
+
+    def forward(self, x1, x2):
+        return self.backbone(x1, x2)

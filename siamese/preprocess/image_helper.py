@@ -206,7 +206,7 @@ def crop_black_border(img):
     # return img
 
 
-def get_template_matching(source, photo_to_compare, test_show=False):
+def get_template_matching(source, photo_to_compare):
     """Get the most similar part of the template in user photo (source)
     photo_to_compare - photo to compare
     source - user photo
@@ -269,6 +269,7 @@ def get_best_match(image_source1, image_source2):
         max_val_resized_height = max_val_2 if max_val_2 > max_val_1 else max_val_1
     except cv2.error:
         max_val_resized_height = 0
+
     # case 3
     try:
         img_cropped_resized_width1, img_cropped_resized_width2 = \
@@ -279,6 +280,7 @@ def get_best_match(image_source1, image_source2):
         max_val_resized_width = max_val_2 if max_val_2 > max_val_1 else max_val_1
     except cv2.error:
         max_val_resized_width = 0
+
     # case 4
     try:
         img_cropped_resized1, img_cropped_resized2 = \
@@ -289,6 +291,7 @@ def get_best_match(image_source1, image_source2):
         max_val_cropped_scaled = max_val_2 if max_val_2 > max_val_1 else max_val_1
     except cv2.error:
         max_val_cropped_scaled = 0
+
     # ----- Find best match ---------
     max_final_val = max((max_val_resized,
                          max_val_resized_height,

@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from torchvision.models import regnet_x_800mf, RegNet_X_800MF_Weights
+from torchvision.models import regnet_y_800mf, RegNet_Y_800MF_Weights
 
 
 class ScaledDotAttnModule(nn.Module):
@@ -17,7 +17,7 @@ class SiameseNN(nn.Module):
 
     def __init__(self):
         super().__init__()
-        self.net_org = regnet_x_800mf(weights=RegNet_X_800MF_Weights.DEFAULT)
+        self.net_org = regnet_y_800mf(weights=RegNet_Y_800MF_Weights.DEFAULT)
 
         # remove the last layer of backbone (linear layer which is before last layer)
         backbone_layers = list(self.net_org.children())
@@ -25,18 +25,15 @@ class SiameseNN(nn.Module):
 
         self.scaled_dot_attn = ScaledDotAttnModule()
         self.fc = torch.nn.Sequential(
-            torch.nn.Linear(672, 128),
+            torch.nn.Linear(784, 128),
             torch.nn.ReLU(),
             torch.nn.Dropout(0.3),
-            torch.nn.Linear(128, 32),
+            torch.nn.Linear(128, 64),
             torch.nn.ReLU(),
             torch.nn.Dropout(0.3),
-            torch.nn.Linear(32, 1)
+            torch.nn.Linear(64, 1)
         )
 
-        self.fc_final = torch.nn.Linear(2, 1)
-
-        self.fc_final.apply(self.init_weights)
         self.fc.apply(self.init_weights)
         self.backbone.apply(self.init_weights)
 
@@ -56,8 +53,8 @@ class SiameseNN(nn.Module):
         output1 = self.forward_once(input1)
         output2 = self.forward_once(input2)
 
-        output = 1 - torch.pow(
-            nn.functional.cosine_similarity(output1, output2),
+        output = torch.pow(
+            (1 - nn.functional.cosine_similarity(output1, output2)),
             2
         )
         output = output.unsqueeze(dim=1)

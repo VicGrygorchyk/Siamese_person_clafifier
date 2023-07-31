@@ -16,21 +16,17 @@ from siamese.model import SiameseNN
 from siamese.trainer_mng import ModelTrainingWrapper
 
 
-THRESHOLD = 0.37
+THRESHOLD = 0.2
 
 transformation = torch_transform.TransformHelper()
-with torch.no_grad():
-    siamese = SiameseNN()
-    # siamese.load_state_dict(
-    # checkpoint = torch.load()
-    model = ModelTrainingWrapper.load_from_checkpoint(
-        f'{os.getenv("SAVE_MODEL_PATH")}epoch=41-step=546.ckpt',
-    )
-    # print(checkpoint.keys())
-    siamese.eval()
+# load pure Pytorch model
+model_checkpoint = ModelTrainingWrapper.load_from_checkpoint(checkpoint_path=f'{os.getenv("SAVE_MODEL_PATH")}epoch=21-step=550.ckpt')
+siamese = SiameseNN()
+siamese.load_state_dict(model_checkpoint.backbone.state_dict())
 
 
 def use_model(imgs: 'torch.Tensor', other_imgs: 'torch.Tensor') -> torch.FloatTensor:
+    siamese.eval()
     with torch.no_grad():
         activations = siamese(imgs, other_imgs)
         print(activations)
@@ -108,8 +104,8 @@ if __name__ == "__main__":
             ones = predicted_res.count([1])
             label_category = 0 if zeros > ones else 1
         for img_path in images_pathes:
-            # expected = 0 if path_dir.endswith("true") else 1
-            # accuracy.append(expected == label_category)
+            expected = 0 if path_dir.endswith("true") else 1
+            accuracy.append(expected == label_category)
             saved_results.append(
                 {
                     "folder": path_dir,
@@ -118,8 +114,8 @@ if __name__ == "__main__":
                     "target_img": img_path
                 }
             )
-    # print(len(accuracy))
-    # print(accuracy.count(True))
-    labels_path = os.getenv('LABELS_PATH')
-    with open(labels_path, "w+") as json_file:
-        json.dump(saved_results, json_file, indent=4)
+    print(len(accuracy))
+    print(accuracy.count(True))
+    # labels_path = os.getenv('LABELS_PATH')
+    # with open(labels_path, "w+") as json_file:
+    #     json.dump(saved_results, json_file, indent=4)
