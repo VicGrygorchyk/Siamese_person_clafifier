@@ -7,6 +7,8 @@ from torch.utils.data import DataLoader, random_split
 from torch.optim import AdamW
 from torch.nn import BCEWithLogitsLoss
 from mlflow import log_metric, log_param
+import mlflow
+from mlflow.models import infer_signature
 import lightning.pytorch as pl
 
 from siamese.dataset import PersonsImages
@@ -102,6 +104,11 @@ class ModelTrainingWrapper(pl.LightningModule):
         self.log("Validation loss", eval_loss)
         self.log("Validation accuracy", average(self.eval_accuracy))
         print("Validation accuracy ", average(self.eval_accuracy))
+
+        # if eval(os.getenv("LOG_MODEL_TO_MLFLOW")):
+        #     predictions = trainer.predict()
+        #     signature = infer_signature(X_test, predictions)
+        #     mlflow.pytorch.log_model(rf, "model", signature=signature)
 
     def test_step(self, batch, batch_idx):
         lbl_images, target_imgs, labels = batch

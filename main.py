@@ -3,8 +3,6 @@ import os
 from torch import cuda
 from torch import compile as torch_compile
 from mlflow import start_run
-import mlflow
-from mlflow.models import infer_signature
 import lightning.pytorch as pl
 from lightning.pytorch.tuner import Tuner
 from lightning.pytorch.callbacks import StochasticWeightAveraging, ModelCheckpoint, EarlyStopping
@@ -46,7 +44,3 @@ if __name__ == "__main__":
 
         trainer.fit(model=model_wrapped)
         trainer.test(model_wrapped)
-
-
-        # signature = infer_signature(X_test, predictions)
-        # mlflow.pytorch.log_model(rf, "model", signature=signature)

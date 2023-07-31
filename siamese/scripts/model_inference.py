@@ -16,7 +16,7 @@ from siamese.model import SiameseNN
 from siamese.trainer_mng import ModelTrainingWrapper
 
 
-THRESHOLD = 0.2
+THRESHOLD = 0.45
 
 transformation = torch_transform.TransformHelper()
 # load pure Pytorch model
@@ -104,8 +104,8 @@ if __name__ == "__main__":
             ones = predicted_res.count([1])
             label_category = 0 if zeros > ones else 1
         for img_path in images_pathes:
-            expected = 0 if path_dir.endswith("true") else 1
-            accuracy.append(expected == label_category)
+            # expected = 0 if path_dir.endswith("true") else 1
+            # accuracy.append(expected == label_category)
             saved_results.append(
                 {
                     "folder": path_dir,
@@ -114,8 +114,8 @@ if __name__ == "__main__":
                     "target_img": img_path
                 }
             )
-    print(len(accuracy))
-    print(accuracy.count(True))
-    # labels_path = os.getenv('LABELS_PATH')
-    # with open(labels_path, "w+") as json_file:
-    #     json.dump(saved_results, json_file, indent=4)
+    # print(len(accuracy))
+    # print(accuracy.count(True))
+    labels_path = os.getenv('LABELS_PATH')
+    with open(labels_path, "w+") as json_file:
+        json.dump(saved_results, json_file, indent=4)
