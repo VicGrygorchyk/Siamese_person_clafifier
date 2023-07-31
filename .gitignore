@@ -114,3 +114,4 @@ __MACOSX/
 saved_model
 **/mlruns/
 *.json
+/assets
