@@ -16,14 +16,16 @@ from siamese.model import SiameseNN
 from siamese.trainer_mng import ModelTrainingWrapper
 
 
-THRESHOLD = 0.45
+THRESHOLD = 0.37
+# 0.45 TP 609, TN 158, FP 46, FN 39
+# 0.3 TP 607, TN 162, FP 48, FN 35
 
-transformation = torch_transform.TransformHelper()
+transformation = torch_transform.TransformInferHelper()
 # load pure Pytorch model
-model_checkpoint = ModelTrainingWrapper.load_from_checkpoint(checkpoint_path=f'{os.getenv("SAVE_MODEL_PATH")}epoch=21-step=550.ckpt')
+model_checkpoint = ModelTrainingWrapper.load_from_checkpoint(checkpoint_path=f'{os.getenv("SAVE_MODEL_PATH")}epoch=79-step=2240.ckpt')
 siamese = SiameseNN()
 siamese.load_state_dict(model_checkpoint.backbone.state_dict())
-
+TEST = True
 
 def use_model(imgs: 'torch.Tensor', other_imgs: 'torch.Tensor') -> torch.FloatTensor:
     siamese.eval()
@@ -87,7 +89,12 @@ if __name__ == "__main__":
     #     '/media/mudro/0B8CDB8D01D869D6/VICTOR_MY_LOVE/datasets/siamese/data/yandex/1514_false/google_img0'
     # )
     saved_results = []
-    accuracy = []
+    if TEST:
+        accuracy = []
+        tp = 0
+        tn = 0
+        fp = 0
+        fn = 0
     dataset_path = os.getenv('DATA_FOR_INFER')
 
     for path_dir in glob(f'{dataset_path}/*'):
@@ -104,8 +111,20 @@ if __name__ == "__main__":
             ones = predicted_res.count([1])
             label_category = 0 if zeros > ones else 1
         for img_path in images_pathes:
-            # expected = 0 if path_dir.endswith("true") else 1
-            # accuracy.append(expected == label_category)
+            if TEST:
+                expected = 0 if path_dir.endswith("true") else 1
+                accuracy.append(expected == label_category)
+                if expected == label_category:
+                    if expected == 0:
+                        tp += 1
+                    else:
+                        tn += 1
+                else:
+                    if expected == 0:
+                        fp += 1
+                    else:
+                        fn += 1
+
             saved_results.append(
                 {
                     "folder": path_dir,
@@ -114,8 +133,10 @@ if __name__ == "__main__":
                     "target_img": img_path
                 }
             )
-    # print(len(accuracy))
-    # print(accuracy.count(True))
+    if TEST:
+        print(len(accuracy))
+        print(accuracy.count(True))
+        print(f'TP {tp}, TN {tn}, FP {fp}, FN {fn}')
     labels_path = os.getenv('LABELS_PATH')
     with open(labels_path, "w+") as json_file:
         json.dump(saved_results, json_file, indent=4)

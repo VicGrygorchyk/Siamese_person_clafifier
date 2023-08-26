@@ -21,7 +21,7 @@ class PersonsImages(Dataset):
         with open(self.root, 'r+') as json_file:
             self._data_paths: List[ImageItem] = [ImageItem(**item) for item in json.load(json_file)]
         # transform
-        self.transformation = torch_transform.TransformHelper()
+        self.transformation = torch_transform.TransformTrainHelper()
 
     def __len__(self):
         return len(self._data_paths)

@@ -24,7 +24,7 @@ START_BATCH_SIZE = 16
 DATASET_PATH = os.getenv("DATASET_PATH")
 LEARNING_RATE = 2e-4
 WEIGHT_DECAY = 0.01
-CLS_THRESHOLD = 0.475
+CLS_THRESHOLD = 0.4
 
 
 def get_accuracy(logit: 'Tensor', labels: 'Tensor'):

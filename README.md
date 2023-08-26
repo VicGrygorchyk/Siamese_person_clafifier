@@ -25,6 +25,7 @@ It means, the NN should pay attention to the main object on the photo, and shoul
 The goal to implement the NN, which is able to detect the difference.
 
 # Phase 2
-- [ ] add Tuner to find best hyperparams
+- [ ] add data aug
+- [ ] track f1 score
 - [ ] Optimize model to work on CPU
 - [ ] Prepare model for inference
