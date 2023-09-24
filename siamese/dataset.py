@@ -1,6 +1,7 @@
-from typing import List, Tuple, TYPE_CHECKING
+from typing import List, Tuple, Tuple, TYPE_CHECKING
 import json
 
+from torch import Tensor
 from torch.utils.data import Dataset
 
 from siamese.preprocess import torch_transform, image_helper
@@ -26,7 +27,7 @@ class PersonsImages(Dataset):
     def __len__(self):
         return len(self._data_paths)
 
-    def __getitem__(self, index) -> Tuple['TensorType', 'TensorType', List[float, float, float]]:
+    def __getitem__(self, index) -> Tuple['TensorType', 'TensorType', 'Tensor']:
         """
         For every example, we will select two images: label and target, and label_category aka class
         """
@@ -42,4 +43,4 @@ class PersonsImages(Dataset):
 
         label_img, target_img = self.transformation.transform_2_imgs(label_img, target_img)
 
-        return label_img, target_img, [label_human_face_source, label_human_face_target, label_similar]
+        return label_img, target_img, Tensor((label_human_face_source, label_human_face_target, label_similar))

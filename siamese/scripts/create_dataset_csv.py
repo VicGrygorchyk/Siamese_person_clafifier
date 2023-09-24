@@ -62,9 +62,9 @@ class DatasetJSONCreator:
     def _get_has_face(folder_path: str):
         # FIXME: has face should be detected from files, not folder
         ending = folder_path.split('/')[-1]
-        if OTHER_CATEGORY_ENDING in ending:
+        if OTHER_CATEGORY_ENDING not in ending:
             return HasFace.HAS_FACE.value
-        elif OTHER_CATEGORY_ENDING not in ending:
+        elif OTHER_CATEGORY_ENDING in ending:
             return HasFace.IS_OTHER.value
         else:
             raise Exception(f'Cannot detect correct label `has_face` for folder {folder_path}')

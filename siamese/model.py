@@ -23,6 +23,12 @@ class SiameseNN(nn.Module):
         backbone_layers = list(self.net_org.children())
         self.backbone = torch.nn.Sequential(*backbone_layers[:-1])
 
+        self.fc_faces = torch.nn.Sequential(
+            torch.nn.Linear(672, 128),
+            torch.nn.ReLU(),
+            torch.nn.Linear(128, 1)
+        )
+
         self.scaled_dot_attn = ScaledDotAttnModule()
         self.fc = torch.nn.Sequential(
             torch.nn.Linear(672, 128),
@@ -33,7 +39,6 @@ class SiameseNN(nn.Module):
             torch.nn.Dropout(0.3),
             torch.nn.Linear(64, 1)
         )
-
         self.fc.apply(self.init_weights)
         self.backbone.apply(self.init_weights)
 
@@ -53,6 +58,11 @@ class SiameseNN(nn.Module):
         output1 = self.forward_once(input1)
         output2 = self.forward_once(input2)
 
+        # 1) if it has faces
+        output1_has_face = self.fc_faces(output1)
+        output2_has_face = self.fc_faces(output2)
+
+        # 2) if it is similar
         output = torch.pow(
             (1 - nn.functional.cosine_similarity(output1, output2)),
             2
@@ -70,4 +80,4 @@ class SiameseNN(nn.Module):
         # print("===== output ", output)
         # print("===== output shape ", output.shape)
 
-        return output
+        return torch.cat((output1_has_face, output2_has_face, output), dim=1)
