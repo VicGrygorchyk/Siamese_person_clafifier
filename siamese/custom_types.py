@@ -16,7 +16,8 @@ class HasFace(Enum):
 
 
 class Label(BaseModel):
-    label_has_face: HasFace
+    label_has_face_source: HasFace
+    label_has_face_target: HasFace
     label_similar: Category
 
     class Config:

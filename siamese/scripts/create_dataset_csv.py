@@ -39,7 +39,9 @@ class DatasetJSONCreator:
             for file_path in files_path:
                 results.append(
                     ImageItem(
-                        label_category=Label(label_has_face=has_face, label_similar=category),
+                        label_category=Label(
+                            label_has_face_source=has_face, label_has_face_target=has_face, label_similar=category
+                        ),
                         label_img=label_path,
                         target_img=file_path
                     )
@@ -58,6 +60,7 @@ class DatasetJSONCreator:
 
     @staticmethod
     def _get_has_face(folder_path: str):
+        # FIXME: has face should be detected from files, not folder
         ending = folder_path.split('/')[-1]
         if OTHER_CATEGORY_ENDING in ending:
             return HasFace.HAS_FACE.value
