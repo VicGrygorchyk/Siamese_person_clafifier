@@ -10,7 +10,7 @@ from siamese.custom_types import Category, ImageItem, HasFace, Label
 
 
 LABEL_IMG = "user"
-OTHER_CATEGORY_ENDING = '_other'
+OTHER_CATEGORY_ENDING = 'other'
 SIMILAR_CATEGORY_FILE_ENDINGS = ['_true', '_t']
 DIFF_CATEGORY_FILE_ENDINGS = ['_false', '_n']
 
@@ -36,11 +36,22 @@ class DatasetJSONCreator:
             # there might be more than one target in the folder
             category = self._get_category(folder)
             has_face = self._get_has_face(folder)
+
             for file_path in files_path:
+                label_has_face_source = has_face
+                if has_face != HasFace.IS_OTHER:
+                    label_has_face_source = self._get_has_face_on_img(label_path)
+
+                label_has_face_target = has_face
+                if has_face != HasFace.IS_OTHER:
+                    label_has_face_target = self._get_has_face_on_img(file_path)
+
                 results.append(
                     ImageItem(
                         label_category=Label(
-                            label_has_face_source=has_face, label_has_face_target=has_face, label_similar=category
+                            label_has_face_source=label_has_face_source,
+                            label_has_face_target=label_has_face_target,
+                            label_similar=category
                         ),
                         label_img=label_path,
                         target_img=file_path
@@ -52,9 +63,9 @@ class DatasetJSONCreator:
     def _get_category(folder_path: str):
         ending = folder_path.split('/')[-1]
         if any([end in ending for end in SIMILAR_CATEGORY_FILE_ENDINGS]):
-            return Category.SIMILAR.value
+            return Category.SIMILAR
         elif any([end in ending for end in DIFF_CATEGORY_FILE_ENDINGS]):
-            return Category.DIFFERENT.value
+            return Category.DIFFERENT
         else:
             raise Exception(f'Cannot detect the category for folder {folder_path}')
 
@@ -63,11 +74,22 @@ class DatasetJSONCreator:
         # FIXME: has face should be detected from files, not folder
         ending = folder_path.split('/')[-1]
         if OTHER_CATEGORY_ENDING not in ending:
-            return HasFace.HAS_FACE.value
+            return HasFace.HAS_FACE
         elif OTHER_CATEGORY_ENDING in ending:
-            return HasFace.IS_OTHER.value
+            return HasFace.IS_OTHER
         else:
             raise Exception(f'Cannot detect correct label `has_face` for folder {folder_path}')
+
+    @staticmethod
+    def _get_has_face_on_img(file_path: str):
+        # FIXME: has face should be detected from files, not folder
+        ending = file_path.split('/')[-1]
+        if OTHER_CATEGORY_ENDING not in ending:
+            return HasFace.HAS_FACE
+        elif OTHER_CATEGORY_ENDING in ending:
+            return HasFace.IS_OTHER
+        else:
+            raise Exception(f'Cannot detect correct label `has_face` for folder {file_path}')
 
     def save_to_json(self, json_path):
         with open(json_path, "w+") as json_file:

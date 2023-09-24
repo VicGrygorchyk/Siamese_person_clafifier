@@ -11,8 +11,8 @@ class Category(Enum):
 
 
 class HasFace(Enum):
-    HAS_FACE = 0
-    IS_OTHER = 1
+    HAS_FACE = 0  # human photo with face
+    IS_OTHER = 1  # others: pictures, cartoons, animals, things, no human etc
 
 
 class Label(BaseModel):
