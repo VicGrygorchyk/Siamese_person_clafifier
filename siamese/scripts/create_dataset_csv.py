@@ -6,10 +6,11 @@ import json
 from dataclasses import asdict
 
 sys.path.append('./')
-from siamese.custom_types import Category, ImageItem
+from siamese.custom_types import Category, ImageItem, HasFace, Label
 
 
 LABEL_IMG = "user"
+OTHER_CATEGORY_ENDING = '_other'
 SIMILAR_CATEGORY_FILE_ENDINGS = ['_true', '_t']
 DIFF_CATEGORY_FILE_ENDINGS = ['_false', '_n']
 
@@ -34,10 +35,11 @@ class DatasetJSONCreator:
             label_path = files_path.pop(label_index)
             # there might be more than one target in the folder
             category = self._get_category(folder)
+            has_face = self._get_has_face(folder)
             for file_path in files_path:
                 results.append(
                     ImageItem(
-                        label_category=category,
+                        label_category=Label(label_has_face=has_face, label_similar=category),
                         label_img=label_path,
                         target_img=file_path
                     )
@@ -54,9 +56,19 @@ class DatasetJSONCreator:
         else:
             raise Exception(f'Cannot detect the category for folder {folder_path}')
 
+    @staticmethod
+    def _get_has_face(folder_path: str):
+        ending = folder_path.split('/')[-1]
+        if OTHER_CATEGORY_ENDING in ending:
+            return HasFace.HAS_FACE.value
+        elif OTHER_CATEGORY_ENDING not in ending:
+            return HasFace.IS_OTHER.value
+        else:
+            raise Exception(f'Cannot detect correct label `has_face` for folder {folder_path}')
+
     def save_to_json(self, json_path):
         with open(json_path, "w+") as json_file:
-            json.dump([dict((k, v) for k, v in asdict(item).items()) for item in self.data_paths], json_file, indent=4)
+            json.dump([item.dict() for item in self.data_paths], json_file, indent=4)
 
 
 if __name__ == "__main__":
