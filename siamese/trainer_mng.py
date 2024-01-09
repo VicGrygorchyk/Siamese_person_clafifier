@@ -5,7 +5,7 @@ from numpy import average
 
 from torch.utils.data import DataLoader, random_split
 from torch.optim import AdamW
-from torch.nn import CrossEntropyLoss
+from torch.nn import BCEWithLogitsLoss
 from mlflow import log_metric, log_param
 import mlflow
 from mlflow.models import infer_signature
@@ -33,11 +33,11 @@ def get_accuracy(logit: 'Tensor', labels: 'Tensor') -> (float, float, float):
 
     pred = (logit > CLS_THRESHOLD).float()
     print(f"predicted {pred}")
-    acc_face_source = (pred[:, 0] == labels[:, 0]).sum().item() / len(labels)
+    acc_face_source = (pred[:, 0] == labels[:, 0]).sum().item() / len(labels[:, 0])
     print(f'acc of acc_face_source {acc_face_source}')
-    acc_face_target = (pred[:, 1] == labels[:, 1]).sum().item() / len(labels)
+    acc_face_target = (pred[:, 1] == labels[:, 1]).sum().item() / len(labels[:, 1])
     print(f'acc of acc_face_target {acc_face_target}')
-    acc_similar = (pred[:, 2] == labels[:, 2]).sum().item() / len(labels)
+    acc_similar = (pred[:, 2] == labels[:, 2]).sum().item() / len(labels[:, 2])
     print(f'acc of acc_similar {acc_similar}')
     return acc_face_source, acc_face_target, acc_similar
 
@@ -56,7 +56,7 @@ class ModelTrainingWrapper(pl.LightningModule):
         log_param('starting learning rate', LEARNING_RATE)
         log_param('weight decay', WEIGHT_DECAY)
         log_param('Loss function', 'CrossEntropyLoss')
-        self.criterion = CrossEntropyLoss()
+        self.criterion = BCEWithLogitsLoss()
         self.learning_rate = LEARNING_RATE
         self.weight_decay = WEIGHT_DECAY
         self.eval_loss = 0.0

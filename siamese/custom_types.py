@@ -11,13 +11,11 @@ class Category(Enum):
 
 
 class HasFace(Enum):
-    HAS_FACE = 0  # human photo with face
+    HAS_HUM_FACE = 0  # human photo with face
     IS_OTHER = 1  # others: pictures, cartoons, animals, things, no human etc
 
 
 class Label(BaseModel):
-    label_has_face_source: HasFace
-    label_has_face_target: HasFace
     label_similar: Category
 
     class Config:
@@ -28,6 +26,14 @@ class ImageItem(BaseModel):
     label_category: Label
     label_img: str
     target_img: str
+
+    class Config:
+        use_enum_values = True
+
+
+class CLSImageItem(BaseModel):
+    label_category: HasFace
+    label_img_path: str
 
     class Config:
         use_enum_values = True
