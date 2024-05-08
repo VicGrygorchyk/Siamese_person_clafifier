@@ -1,8 +1,9 @@
-from typing import List, Dict, Tuple, TYPE_CHECKING
+from typing import List, Tuple, TYPE_CHECKING
 import json
 
 from torch import Tensor
 from torch.utils.data import Dataset
+from retinaface.pre_trained_models import get_model
 
 from siamese.preprocess import torch_transform, image_helper, get_face
 from siamese.custom_types import ImageItem, CLSImageItem
@@ -23,6 +24,7 @@ class PersonsImages(Dataset):
             self._data_paths: List[ImageItem] = [ImageItem(**item) for item in json.load(json_file)]
         # transform
         self.transformation = torch_transform.TransformTrainHelper()
+        self.face_detect_model = get_model("resnet50_2020-07-20", max_size=512)
 
     def __len__(self):
         return len(self._data_paths)
@@ -32,13 +34,12 @@ class PersonsImages(Dataset):
         For every example, we will select two images: label and target, and label_category aka class
         """
         item_path = self._data_paths[index]
-        label_img = get_face.get_faces(item_path.label_img)
+        label_img = image_helper.load_image(item_path.label_img)
         category = item_path.label_category
-        # label_human_face_source = float(category.label_has_face_source)
-        # label_human_face_target = float(category.label_has_face_target)
+
         label_similar = float(category.label_similar)
 
-        target_img = get_face.get_faces(item_path.target_img)
+        target_img = image_helper.load_image(item_path.target_img)
         label_img, target_img = image_helper.scale_images(label_img, target_img)
 
         label_img, target_img = self.transformation.transform_2_imgs(label_img, target_img)
@@ -64,11 +65,13 @@ class HasHumanImages(Dataset):
         category: int = item_path.label_category
 
         label = category
-
         img = image_helper.load_image(item_path.label_img_path)
+        try:
+            img = self.image_processor(img)
+        except Exception as exc:
+            print(f"Error {item_path.label_img_path}")
+            raise exc
 
-        img = self.image_processor(img)
         img = img.data['pixel_values'][0]
-        # img = self.transformation.transform(img)
 
         return img, label

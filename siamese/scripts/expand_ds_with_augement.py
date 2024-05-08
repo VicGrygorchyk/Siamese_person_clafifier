@@ -14,12 +14,12 @@ def transform_image(path_to_img_folder: str):
     images = []
 
     files_path = glob(f'{path_to_img_folder}*')
-    image_with_label_path = [file for file in files_path if '/user' in file].pop()
-    print(f"image_with_label_path ${image_with_label_path}")
+    # image_with_label_path = [file for file in files_path if '/user' in file].pop()
+    # print(f"image_with_label_path ${image_with_label_path}")
 
     for file_path in files_path:
-        if file_path == image_with_label_path:
-            continue
+        # if file_path == image_with_label_path:
+        #     continue
         img = image_helper.load_image(file_path)
         print(f"file_path ${file_path}")
         images.append((img, file_path))
@@ -41,7 +41,7 @@ def transform_image(path_to_img_folder: str):
 
 
 if __name__ == "__main__":
-    dataset_labeled = os.getenv('LABELED_DS_TRAIN')
+    dataset_labeled = os.getenv('LABELED_FACES_CLS_DS_TRAIN')
 
-    for path_dir in glob(f'{dataset_labeled}/*_false'):
-        transform_image(path_dir)
+    for path_dir in glob(f'{dataset_labeled}/others/*'):
+        transform_image(f'{dataset_labeled}/others')

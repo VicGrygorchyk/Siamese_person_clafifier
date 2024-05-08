@@ -12,13 +12,12 @@ from siamese.trainer_cls_mng import ClsModelTrainingWrapper
 EPOCH = 10
 if epochs := os.getenv('EPOCH'):
     EPOCH = int(epochs)
-SAVE_CLS_MODEL_PATH = os.getenv("SAVE_CLS_MODEL_PATH")
+SAVE_CLS_MODEL_PATH = os.getenv("SAVE_FACES_CLS_MODEL_PATH")
 
 
 if __name__ == "__main__":
     cuda.empty_cache()
     set_float32_matmul_precision("highest")
-    # dataset
 
     with start_run(description=f"Run {EPOCH} epochs, CrossEntropyLoss", run_name='classification_with_ViT'):
         model_wrapped = ClsModelTrainingWrapper()

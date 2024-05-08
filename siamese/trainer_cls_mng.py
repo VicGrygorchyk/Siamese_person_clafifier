@@ -30,10 +30,10 @@ DATASET_PATH = os.getenv("DATASET_CSL_PATH")
 LEARNING_RATE = 2e-4
 WEIGHT_DECAY = 0.01
 CLS_THRESHOLD = 0.4
-
+MODEL_SAVE_PATH = os.getenv('SAVE_CLS_MODEL_PATH')
 
 accuracy = evaluate.load("accuracy")
-checkpoint = "google/vit-base-patch16-224-in21k"
+checkpoint = os.getenv('CLS_MODEL_CHECKPOINT')
 
 
 def compute_metrics(predictions, labels):
@@ -85,13 +85,13 @@ class ClsModelTrainingWrapper(pl.LightningModule):
         self.test_accuracy = []
 
     def train_dataloader(self):
-        return DataLoader(self.train_ds, shuffle=True, batch_size=self.batch_size, num_workers=10)
+        return DataLoader(self.train_ds, shuffle=True, batch_size=self.batch_size, num_workers=15)
 
     def val_dataloader(self):
-        return DataLoader(self.valid_ds, shuffle=False, batch_size=12, num_workers=10)
+        return DataLoader(self.valid_ds, shuffle=False, batch_size=12, num_workers=15)
 
     def test_dataloader(self):
-        return DataLoader(self.test_ds, shuffle=False, batch_size=12, num_workers=10)
+        return DataLoader(self.test_ds, shuffle=False, batch_size=12, num_workers=15)
 
     def _handle_batch_input(self, batch):
         images, labels = batch
@@ -167,9 +167,9 @@ class ClsModelTrainingWrapper(pl.LightningModule):
         test_loss = self.test_loss / len(self.test_dataloader())
         self.log("Test loss", test_loss)
         self.log("Test accuracy", np.average(self.test_accuracy))
-        self.backbone.config.to_json_file(f"{os.getenv('SAVE_CLS_MODEL_PATH')}/config.json")
-        self.backbone.save_pretrained(f"{os.getenv('SAVE_CLS_MODEL_PATH')}/model")
-        self.image_processor.save_pretrained(f"{os.getenv('SAVE_CLS_MODEL_PATH')}/model")
+        self.backbone.config.to_json_file(f"{MODEL_SAVE_PATH}/config.json")
+        self.backbone.save_pretrained(f"{MODEL_SAVE_PATH}/model")
+        self.image_processor.save_pretrained(f"{MODEL_SAVE_PATH}/model")
 
     def forward(self, x):
         return self.backbone(x)

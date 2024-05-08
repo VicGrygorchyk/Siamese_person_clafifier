@@ -30,7 +30,6 @@ class DatasetCLSCreator:
             has_hum = HasFace.HAS_HUM_FACE if folder.endswith(CATEGORY_WITH_HUM) else HasFace.IS_OTHER
 
             for file_path in files_path:
-
                 results.append(
                     CLSImageItem(
                         label_category=has_hum,
