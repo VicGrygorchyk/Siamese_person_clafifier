@@ -20,16 +20,15 @@ from siamese.dataset import HasHumanImages
 from siamese.custom_types import HasFace
 
 if TYPE_CHECKING:
-    from torch import Tensor
     from torch.optim import Optimizer
 
 
-START_BATCH_SIZE = 128
+START_BATCH_SIZE = 144
 
 DATASET_PATH = os.getenv("DATASET_CSL_PATH")
 LEARNING_RATE = 2e-4
 WEIGHT_DECAY = 0.01
-CLS_THRESHOLD = 0.4
+CLS_THRESHOLD = 0.49
 MODEL_SAVE_PATH = os.getenv('SAVE_CLS_MODEL_PATH')
 
 accuracy = evaluate.load("accuracy")
@@ -80,6 +79,7 @@ class ClsModelTrainingWrapper(pl.LightningModule):
         self.learning_rate = LEARNING_RATE
         self.weight_decay = WEIGHT_DECAY
         self.eval_loss = 0.0
+        self.best_prev_eval_loss = 100.0
         self.eval_accuracy = []
         self.test_loss = 0.0
         self.test_accuracy = []
@@ -88,7 +88,7 @@ class ClsModelTrainingWrapper(pl.LightningModule):
         return DataLoader(self.train_ds, shuffle=True, batch_size=self.batch_size, num_workers=15)
 
     def val_dataloader(self):
-        return DataLoader(self.valid_ds, shuffle=False, batch_size=12, num_workers=15)
+        return DataLoader(self.valid_ds, shuffle=False, batch_size=self.batch_size, num_workers=15)
 
     def test_dataloader(self):
         return DataLoader(self.test_ds, shuffle=False, batch_size=12, num_workers=15)
@@ -100,13 +100,6 @@ class ClsModelTrainingWrapper(pl.LightningModule):
         logits = logits.logits
 
         labels = labels
-        # print(f'===========labels======= {labels}')
-        # print(f'===========labels======= {labels.type()}')
-        # print(f'===========labels shape======= {labels.shape}')
-        #
-        # # print(f'========logits========== {logits}')
-        # print(f'========logits========== {logits.type()}')
-        # print(f'========logits shape========== {logits.shape}')
         return logits, labels
 
     def training_step(self, batch, batch_idx):
@@ -144,10 +137,11 @@ class ClsModelTrainingWrapper(pl.LightningModule):
         self.log("Validation loss", eval_loss)
         self.log("Validation accuracy", np.average(self.eval_accuracy))
 
-        # if eval(os.getenv("LOG_MODEL_TO_MLFLOW")):
-        #     predictions = trainer.predict()
-        #     signature = infer_signature(X_test, predictions)
-        #     mlflow.pytorch.log_model(rf, "model", signature=signature)
+        if eval_loss < self.best_prev_eval_loss:
+            self.best_prev_eval_loss = eval_loss
+            self.backbone.config.to_json_file(f"{MODEL_SAVE_PATH}/model_best_config.json")
+            self.backbone.save_pretrained(f"{MODEL_SAVE_PATH}/model_best")
+            self.image_processor.save_pretrained(f"{MODEL_SAVE_PATH}/model_best")
 
     def test_step(self, batch, batch_idx):
         logits, labels = self._handle_batch_input(batch)

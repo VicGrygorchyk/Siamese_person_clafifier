@@ -7,10 +7,16 @@ import cv2
 
 import torch
 
-checkpoints_path = "/media/mudro/Disk120Linux/code/siamese/saved_model/cls_v4/model"
-images = glob("/media/mudro/Disk120Linux/code/siamese/test/*")
-image_processor = AutoImageProcessor.from_pretrained('google/vit-base-patch16-224-in21k', local_files_only=False)
-model = AutoModelForImageClassification.from_pretrained(checkpoints_path, local_files_only=True)
+checkpoints_path = "/home/mudro/PycharmProjects/siamese/saved_model/cls_v7/model_best"
+images = glob("/home/mudro/PycharmProjects/siamese/test/*")
+image_processor = AutoImageProcessor.from_pretrained(
+    'google/vit-base-patch16-224-in21k',
+    local_files_only=False
+)
+model = AutoModelForImageClassification.from_pretrained(
+    checkpoints_path,
+    local_files_only=True
+)
 
 with torch.no_grad():
     for im_path in images:

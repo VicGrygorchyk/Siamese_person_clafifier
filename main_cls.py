@@ -17,7 +17,7 @@ SAVE_CLS_MODEL_PATH = os.getenv("SAVE_FACES_CLS_MODEL_PATH")
 
 if __name__ == "__main__":
     cuda.empty_cache()
-    set_float32_matmul_precision("highest")
+    set_float32_matmul_precision("high")
 
     with start_run(description=f"Run {EPOCH} epochs, CrossEntropyLoss", run_name='classification_with_ViT'):
         model_wrapped = ClsModelTrainingWrapper()
@@ -39,7 +39,7 @@ if __name__ == "__main__":
         if eval(os.getenv("FIND_BATCH_SIZE")):
             tuner.scale_batch_size(model_wrapped, mode='binsearch', init_val=32)
         if eval(os.getenv("FIND_LR_RATE")):
-            tuner.lr_find(model_wrapped, num_training=10)
+            tuner.lr_find(model_wrapped, num_training=100)
 
         trainer.fit(model=model_wrapped)
         trainer.test(model_wrapped)

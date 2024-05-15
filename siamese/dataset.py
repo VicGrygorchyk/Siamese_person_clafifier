@@ -67,9 +67,13 @@ class HasHumanImages(Dataset):
         label = category
         img = image_helper.load_image(item_path.label_img_path)
         try:
-            img = self.image_processor(img)
+            if len(img.shape) < 3:
+                img = image_helper.colorize_gray_to_bgr(img)
+            img = self.transformation.transform(img)
+            img = self.image_processor(img, do_rescale=False)
         except Exception as exc:
-            print(f"Error {item_path.label_img_path}")
+            print(f"Error {item_path.label_img_path}. {exc}")
+            print(f"Error img.shape {img.shape}.")
             raise exc
 
         img = img.data['pixel_values'][0]

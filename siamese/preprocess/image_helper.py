@@ -393,3 +393,8 @@ def rotate(image: 'np_typing.NDArray', degree: int = 25) -> 'np_typing.NDArray':
     M = cv2.getRotationMatrix2D((cX, cY), degree, 1.0)
     rotated = cv2.warpAffine(image, M, (w, h))
     return rotated
+
+
+def colorize_gray_to_bgr(image_bw):
+    image_gray = cv2.cvtColor(image_bw, cv2.COLOR_GRAY2RGB)
+    return image_gray

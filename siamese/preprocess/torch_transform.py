@@ -13,13 +13,8 @@ class TransformCLSTrainHelper:
     def __init__(self):
         self.transformation = transforms.Compose([
             transforms.ToTensor(),
-            transforms.RandomRotation(degrees=(0, 10)),
-            # transforms.RandomPosterize(bits=2, p=0.2),
-            # transforms.RandomAdjustSharpness(sharpness_factor=0, p=0.3),
-            transforms.RandomHorizontalFlip(p=0.2),
-            transforms.RandomGrayscale(p=0.1),
-            transforms.Normalize(mean=[MEAN_COEF, MEAN_COEF, MEAN_COEF],
-                                 std=[STD_COEF, STD_COEF, STD_COEF])
+            transforms.RandomRotation(degrees=(1, 15)),
+            transforms.RandomHorizontalFlip(p=0.5),
         ])
 
     def transform(self, img) -> 'TensorType':
