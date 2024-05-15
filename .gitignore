@@ -115,3 +115,5 @@ saved_model
 **/mlruns/
 *.json
 /assets
+/lightning_logs
+/test

@@ -11,18 +11,21 @@ import torch
 
 sys.path.append('./')
 from siamese.preprocess import image_helper, torch_transform
-from siamese.custom_types import Category
+from siamese.custom_types import Category, HasFace
 from siamese.model import SiameseNN
 from siamese.trainer_mng import ModelTrainingWrapper
 
 
-THRESHOLD = 0.2
+THRESHOLD = 0.37
+# 0.45 TP 609, TN 158, FP 46, FN 39
+# 0.3 TP 607, TN 162, FP 48, FN 35
 
-transformation = torch_transform.TransformHelper()
+transformation = torch_transform.TransformInferHelper()
 # load pure Pytorch model
-model_checkpoint = ModelTrainingWrapper.load_from_checkpoint(checkpoint_path=f'{os.getenv("SAVE_MODEL_PATH")}epoch=21-step=550.ckpt')
+model_checkpoint = ModelTrainingWrapper.load_from_checkpoint(checkpoint_path=f'{os.getenv("SAVE_MODEL_PATH")}epoch=41-step=210.ckpt')
 siamese = SiameseNN()
 siamese.load_state_dict(model_checkpoint.backbone.state_dict())
+TEST = False
 
 
 def use_model(imgs: 'torch.Tensor', other_imgs: 'torch.Tensor') -> torch.FloatTensor:
@@ -77,8 +80,7 @@ def predict_batch(path_to_img_folder: str) -> Tuple['torch.Tensor', List, str]:
 
     predicted = use_model(label_imgs, target_imgs)
 
-    result = torch.where(predicted > THRESHOLD, Category.DIFFERENT.value, Category.SIMILAR.value)
-    return result, [file for file in files_path if '/user' not in file], image_with_label_path
+    return predicted, [file for file in files_path if '/user' not in file], image_with_label_path
 
 
 if __name__ == "__main__":
@@ -87,7 +89,12 @@ if __name__ == "__main__":
     #     '/media/mudro/0B8CDB8D01D869D6/VICTOR_MY_LOVE/datasets/siamese/data/yandex/1514_false/google_img0'
     # )
     saved_results = []
-    accuracy = []
+    if TEST:
+        accuracy = []
+        tp = 0
+        tn = 0
+        fp = 0
+        fn = 0
     dataset_path = os.getenv('DATA_FOR_INFER')
 
     for path_dir in glob(f'{dataset_path}/*'):
@@ -96,26 +103,54 @@ if __name__ == "__main__":
             continue
 
         predicted_tensor, images_pathes, label_image_path = predict_batch(path_dir)
-        predicted_res = predicted_tensor.tolist()
-        print(predicted_res)
-        label_category = predicted_res
-        if isinstance(predicted_res, list):
-            zeros = predicted_res.count([0])
-            ones = predicted_res.count([1])
-            label_category = 0 if zeros > ones else 1
-        for img_path in images_pathes:
-            expected = 0 if path_dir.endswith("true") else 1
-            accuracy.append(expected == label_category)
+        predicted = predicted_tensor
+
+        # if predicted[0].shape[0] > 1:
+
+        has_face_1 = torch.where(predicted[:, 0] < THRESHOLD, HasFace.HAS_FACE.value, HasFace.IS_OTHER.value)
+        print(f"predicted_res has_face_1 {has_face_1}")
+        has_face_1_list = has_face_1.tolist()
+        has_face_2 = torch.where(predicted[:, 1] < THRESHOLD, HasFace.HAS_FACE.value, HasFace.IS_OTHER.value)
+        print(f"predicted_res has_face_2 {has_face_2}")
+        has_face_2_list = has_face_2.tolist()
+        is_similar = torch.where(predicted[:, 2] > THRESHOLD, Category.DIFFERENT.value, Category.SIMILAR.value)
+        print(f"predicted_res is_similar {is_similar}")
+
+        is_similar_list = is_similar.tolist()
+        zeros = is_similar_list.count([0])
+        ones = is_similar_list.count([1])
+        is_similar_label = 0 if zeros > ones else 1
+
+        for img_path, has_face in zip(images_pathes, has_face_2_list):
+            if TEST:
+                expected = 0 if path_dir.endswith("true") else 1
+                # accuracy.append(expected == label_category)
+                # if expected == label_category:
+                #     if expected == 0:
+                #         tp += 1
+                #     else:
+                #         tn += 1
+                # else:
+                #     if expected == 0:
+                #         fp += 1
+                #     else:
+                #         fn += 1
+
             saved_results.append(
                 {
                     "folder": path_dir,
-                    "label_category": label_category,
+                    "label_category": is_similar_label,
                     "label_img": label_image_path,
-                    "target_img": img_path
+                    "label_img_has_face": has_face_1_list[0],
+                    "target_img": img_path,
+                    "target_img_has_face": has_face
                 }
             )
-    print(len(accuracy))
-    print(accuracy.count(True))
-    # labels_path = os.getenv('LABELS_PATH')
-    # with open(labels_path, "w+") as json_file:
-    #     json.dump(saved_results, json_file, indent=4)
+    # if TEST:
+    #     print(len(accuracy))
+    #     print(accuracy.count(True))
+    #     print(f'TP {tp}, TN {tn}, FP {fp}, FN {fn}')
+
+    labels_path = os.getenv('LABELS_PATH')
+    with open(labels_path, "w+") as json_file:
+        json.dump(saved_results, json_file, indent=4)
