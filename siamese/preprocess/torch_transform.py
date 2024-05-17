@@ -13,7 +13,8 @@ class TransformCLSTrainHelper:
     def __init__(self):
         self.transformation = transforms.Compose([
             transforms.ToTensor(),
-            transforms.RandomRotation(degrees=(1, 15)),
+            transforms.RandomRotation(degrees=(1, 25)),
+            transforms.RandomVerticalFlip(p=0.5),
             transforms.RandomHorizontalFlip(p=0.5),
         ])
 

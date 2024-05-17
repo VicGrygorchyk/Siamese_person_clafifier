@@ -65,6 +65,9 @@ class ClsModelTrainingWrapper(pl.LightningModule):
             id2label=id2label,
             label2id=label2id,
         )
+        for child in list(self.backbone.children())[:-1]:
+            for param in child.parameters():
+                param.requires_grad = False
 
         self.batch_size = START_BATCH_SIZE
         self.dataset = HasHumanImages(DATASET_PATH, self.image_processor)
@@ -85,13 +88,13 @@ class ClsModelTrainingWrapper(pl.LightningModule):
         self.test_accuracy = []
 
     def train_dataloader(self):
-        return DataLoader(self.train_ds, shuffle=True, batch_size=self.batch_size, num_workers=15)
+        return DataLoader(self.train_ds, shuffle=True, batch_size=self.batch_size, num_workers=8)
 
     def val_dataloader(self):
-        return DataLoader(self.valid_ds, shuffle=False, batch_size=self.batch_size, num_workers=15)
+        return DataLoader(self.valid_ds, shuffle=False, batch_size=self.batch_size, num_workers=8)
 
     def test_dataloader(self):
-        return DataLoader(self.test_ds, shuffle=False, batch_size=12, num_workers=15)
+        return DataLoader(self.test_ds, shuffle=False, batch_size=12, num_workers=8)
 
     def _handle_batch_input(self, batch):
         images, labels = batch
