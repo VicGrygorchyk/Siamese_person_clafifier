@@ -14,10 +14,10 @@ Labeling done by Active learning:
 ## Which images are similar?
 __These images should be considered as similar__, regardless images have diff size, color, 
 background.
-![img.png](assets/img_similar.png)
+![img.png](readme_data/img_similar.png)
 
 __These images should be considered as different__
-![img.png](assets/img_diff.png)
+![img.png](readme_data/img_diff.png)
 
 It means, the NN should pay attention to the main object on the photo, and should disregard
  the background. 
