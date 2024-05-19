@@ -51,23 +51,28 @@ class SiameseNN(nn.Module):
         # get two images' features
         output1 = self.forward_once(input1)
         output2 = self.forward_once(input2)
+
         # if it is similar
         output = torch.pow(
             (1 - nn.functional.cosine_similarity(output1, output2)),
             2
         )
         output = output.unsqueeze(dim=1)
-        print("===== after cosine output ", output)
-        print("===== after cosine output.shape ", output.shape)
 
+        # attention
         attention_output = self.scaled_dot_attn(output1, output2, output1)
+        attention_output = self.scaled_dot_attn(attention_output, output2, attention_output)
+        attention_output = self.scaled_dot_attn(attention_output, output2, attention_output)
+        attention_output = self.scaled_dot_attn(attention_output, output2, attention_output)
+        # print(f"attention_output {attention_output}")
+        # print(f"attention_output {attention_output.shape}")
         attention_output = nn.functional.normalize(attention_output, dim=1)
         attention_output = self.fc(attention_output)
+        # print("===== attention_output ", attention_output)
+        # print("===== attention_output shape ", attention_output.shape)
 
-        print("===== attention_output ", attention_output)
-        print("===== attention_output shape ", attention_output.shape)
         final_output = attention_output + output
-        print("===== final_output ", final_output)
-        print("===== final_output shape ", final_output.shape)
+        # print("===== final_output ", final_output)
+        # print("===== final_output shape ", final_output.shape)
 
         return final_output

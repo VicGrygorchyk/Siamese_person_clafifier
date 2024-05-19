@@ -9,11 +9,7 @@ import torch
 from torch.utils.data import DataLoader, random_split
 from torch.optim import AdamW
 from torch.nn import CrossEntropyLoss
-from torch import cuda
-from torch import device
 from mlflow import log_metric, log_param
-import mlflow
-from mlflow.models import infer_signature
 import lightning.pytorch as pl
 
 from siamese.dataset import HasHumanImages
@@ -73,7 +69,7 @@ class ClsModelTrainingWrapper(pl.LightningModule):
         self.dataset = HasHumanImages(DATASET_PATH, self.image_processor)
 
         self.train_ds, self.valid_ds, self.test_ds = (
-            random_split(self.dataset, [0.7, 0.15, 0.15])
+            random_split(self.dataset, [0.7, 0.18, 0.12])
         )  # type: HasHumanImages
         log_param('starting learning rate', LEARNING_RATE)
         log_param('weight decay', WEIGHT_DECAY)
