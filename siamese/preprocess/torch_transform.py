@@ -28,12 +28,12 @@ class TransformTrainHelper:
         self.transformation = transforms.Compose([
             transforms.ToTensor(),
             transforms.Resize(size, antialias=True),
-            # transforms.RandomCrop(380),
-            transforms.RandomRotation(degrees=(0, 10)),
-            # transforms.RandomPosterize(bits=2, p=0.2),
+            transforms.RandomRotation(degrees=(0, 25)),
             transforms.RandomAdjustSharpness(sharpness_factor=0, p=0.3),
-            transforms.RandomHorizontalFlip(p=0.2),
-            transforms.RandomGrayscale(p=0.1),
+            transforms.RandomAdjustSharpness(sharpness_factor=2, p=0.3),
+            transforms.RandomHorizontalFlip(p=0.5),
+            transforms.RandomVerticalFlip(p=0.5),
+            transforms.RandomGrayscale(p=0.3),
             transforms.Normalize(mean=[MEAN_COEF, MEAN_COEF, MEAN_COEF],
                                  std=[STD_COEF, STD_COEF, STD_COEF])
         ])

@@ -26,7 +26,7 @@ if __name__ == "__main__":
         trainer = pl.Trainer(
             min_epochs=1,
             max_epochs=EPOCH,
-            accumulate_grad_batches=8,
+            accumulate_grad_batches=4,
             log_every_n_steps=10,
             callbacks=[
                 StochasticWeightAveraging(swa_lrs=1e-2),
@@ -40,7 +40,7 @@ if __name__ == "__main__":
         if eval(os.getenv("FIND_BATCH_SIZE")):
             tuner.scale_batch_size(model_wrapped, mode='binsearch')
         if eval(os.getenv("FIND_LR_RATE")):
-            tuner.lr_find(model_wrapped, num_training=10)
+            tuner.lr_find(model_wrapped, num_training=50)
 
         trainer.fit(model=model_wrapped)
         trainer.test(model_wrapped)

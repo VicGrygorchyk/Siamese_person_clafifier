@@ -74,5 +74,5 @@ class SiameseNN(nn.Module):
         final_output = attention_output + output
         # print("===== final_output ", final_output)
         # print("===== final_output shape ", final_output.shape)
-
+        final_output = torch.sigmoid(final_output)
         return final_output

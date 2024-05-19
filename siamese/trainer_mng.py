@@ -7,7 +7,7 @@ import evaluate
 import torch
 from torch.utils.data import DataLoader, random_split
 from torch.optim import AdamW
-from torch.nn import BCEWithLogitsLoss
+from torch.nn import BCELoss
 from mlflow import log_metric, log_param
 import mlflow
 from mlflow.models import infer_signature
@@ -21,12 +21,12 @@ if TYPE_CHECKING:
     from torch.optim import Optimizer
 
 
-START_BATCH_SIZE = 20
+START_BATCH_SIZE = 112
 
 DATASET_PATH = os.getenv("DATASET_PATH")
 LEARNING_RATE = 2e-4
 WEIGHT_DECAY = 0.01
-CLS_THRESHOLD = 0.4
+CLS_THRESHOLD = 0.5
 
 accuracy = evaluate.load("accuracy")
 
@@ -55,8 +55,8 @@ class ModelTrainingWrapper(pl.LightningModule):
         )  # type: PersonsImages
         log_param('starting learning rate', LEARNING_RATE)
         log_param('weight decay', WEIGHT_DECAY)
-        log_param('Loss function', 'CrossEntropyLoss')
-        self.criterion = BCEWithLogitsLoss()
+        log_param('Loss function', 'BCELoss')
+        self.criterion = BCELoss()
         self.learning_rate = LEARNING_RATE
         self.weight_decay = WEIGHT_DECAY
         self.eval_loss = 0.0
@@ -77,7 +77,7 @@ class ModelTrainingWrapper(pl.LightningModule):
         lbl_images, target_imgs, labels = batch
         logits = self.backbone(lbl_images, target_imgs)
 
-        logits = logits.squeeze(dim=1)
+        labels = labels.view_as(logits)
 
         loss = self.criterion(logits, labels.float())
         loss_item = loss.item()
@@ -94,10 +94,8 @@ class ModelTrainingWrapper(pl.LightningModule):
     def validation_step(self, batch, batch_idx):
         lbl_images, target_imgs, labels = batch
         logits = self.backbone(lbl_images, target_imgs)
-        # print(f'========logits========== {logits}')
-        # print(f'========logits shape========== {logits.shape}')
 
-        logits = logits.squeeze(dim=1)
+        labels = labels.view_as(logits)
 
         loss = self.criterion(logits, labels.float())
         loss_item = loss.item()
@@ -124,7 +122,7 @@ class ModelTrainingWrapper(pl.LightningModule):
     def test_step(self, batch, batch_idx):
         lbl_images, target_imgs, labels = batch
         logits = self.backbone(lbl_images, target_imgs)
-        logits = logits.squeeze(dim=1)
+        labels = labels.view_as(logits)
 
         loss = self.criterion(logits, labels.float())
         log_metric('test loss', loss, batch_idx)

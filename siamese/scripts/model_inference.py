@@ -16,7 +16,7 @@ from siamese.model import SiameseNN
 from siamese.trainer_mng import ModelTrainingWrapper
 
 
-THRESHOLD = 0.37
+THRESHOLD = 0.01
 # 0.45 TP 609, TN 158, FP 46, FN 39
 # 0.3 TP 607, TN 162, FP 48, FN 35
 
