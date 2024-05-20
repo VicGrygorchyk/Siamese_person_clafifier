@@ -11,8 +11,8 @@ from siamese.custom_types import Category, ImageItem
 
 LABEL_IMG = "user"
 OTHER_CATEGORY_ENDING = 'other'
-SIMILAR_CATEGORY_FILE_ENDINGS = ['_true', '_t']
-DIFF_CATEGORY_FILE_ENDINGS = ['_false', '_n']
+SIMILAR_CATEGORY_FILE_ENDINGS = '_true'
+DIFF_CATEGORY_FILE_ENDINGS = '_false'
 
 
 class DatasetJSONCreator:
@@ -49,9 +49,9 @@ class DatasetJSONCreator:
     @staticmethod
     def _get_category(folder_path: str):
         ending = folder_path.split('/')[-1]
-        if any([end in ending for end in SIMILAR_CATEGORY_FILE_ENDINGS]):
+        if ending.endswith(SIMILAR_CATEGORY_FILE_ENDINGS):
             return Category.SIMILAR
-        elif any([end in ending for end in DIFF_CATEGORY_FILE_ENDINGS]):
+        elif ending.endswith(DIFF_CATEGORY_FILE_ENDINGS):
             return Category.DIFFERENT
         else:
             raise Exception(f'Cannot detect the category for folder {folder_path}')
