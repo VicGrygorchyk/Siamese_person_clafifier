@@ -28,12 +28,12 @@ class TransformTrainHelper:
         self.transformation = transforms.Compose([
             transforms.ToTensor(),
             transforms.Resize(size, antialias=True),
-            transforms.RandomRotation(degrees=(0, 25)),
+            transforms.RandomRotation(degrees=(0, 35)),
             transforms.RandomAdjustSharpness(sharpness_factor=0, p=0.3),
             transforms.RandomAdjustSharpness(sharpness_factor=2, p=0.3),
             transforms.RandomHorizontalFlip(p=0.5),
             transforms.RandomVerticalFlip(p=0.5),
-            transforms.RandomGrayscale(p=0.3),
+            transforms.RandomGrayscale(p=0.2),
             transforms.Normalize(mean=[MEAN_COEF, MEAN_COEF, MEAN_COEF],
                                  std=[STD_COEF, STD_COEF, STD_COEF])
         ])
@@ -53,7 +53,7 @@ class TransformInferHelper:
     def __init__(self):
         self.transformation = transforms.Compose([
             transforms.ToTensor(),
-            transforms.Resize((100, 100), antialias=True),
+            transforms.Resize((350, 350), antialias=True),
             transforms.Normalize(mean=[MEAN_COEF, MEAN_COEF, MEAN_COEF],
                                  std=[STD_COEF, STD_COEF, STD_COEF])
         ])

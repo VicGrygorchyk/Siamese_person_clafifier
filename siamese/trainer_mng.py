@@ -25,7 +25,7 @@ START_BATCH_SIZE = 112
 
 DATASET_PATH = os.getenv("DATASET_PATH")
 LEARNING_RATE = 2e-4
-WEIGHT_DECAY = 0.01
+WEIGHT_DECAY = 0.001
 CLS_THRESHOLD = 0.5
 
 accuracy = evaluate.load("accuracy")

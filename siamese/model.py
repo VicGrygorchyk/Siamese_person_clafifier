@@ -23,7 +23,11 @@ class SiameseNN(nn.Module):
         backbone_layers1 = list(self.net_org_x.children())
         self.backbone_x = torch.nn.Sequential(*backbone_layers1[:-1])
 
-        self.scaled_dot_attn = ScaledDotAttnModule()
+        self.scaled_dot_attn1 = ScaledDotAttnModule()
+        self.scaled_dot_attn2 = ScaledDotAttnModule()
+        self.scaled_dot_attn3 = ScaledDotAttnModule()
+        self.scaled_dot_attn4 = ScaledDotAttnModule()
+
         self.fc = torch.nn.Sequential(
             torch.nn.Linear(672, 128),
             torch.nn.ReLU(),
@@ -60,10 +64,11 @@ class SiameseNN(nn.Module):
         output = output.unsqueeze(dim=1)
 
         # attention
-        attention_output = self.scaled_dot_attn(output1, output2, output1)
-        attention_output = self.scaled_dot_attn(attention_output, output2, attention_output)
-        attention_output = self.scaled_dot_attn(attention_output, output2, attention_output)
-        attention_output = self.scaled_dot_attn(attention_output, output2, attention_output)
+        attention_output = self.scaled_dot_attn1(output1, output2, output1)
+        attention_output = self.scaled_dot_attn2(attention_output, output2, attention_output)
+        attention_output = self.scaled_dot_attn3(attention_output, output2, attention_output)
+        attention_output = self.scaled_dot_attn4(attention_output, output2, attention_output)
+
         # print(f"attention_output {attention_output}")
         # print(f"attention_output {attention_output.shape}")
         attention_output = nn.functional.normalize(attention_output, dim=1)
