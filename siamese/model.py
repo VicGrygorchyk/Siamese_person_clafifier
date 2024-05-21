@@ -17,7 +17,7 @@ class SiameseNN(nn.Module):
 
     def __init__(self):
         super().__init__()
-        self.net_org_x = regnet_x_800mf(weights=RegNet_X_800MF_Weights.DEFAULT)
+        self.net_org_x = regnet_y_400mf(weights=RegNet_Y_400MF_Weights)
 
         # remove the last layer of backbone (linear layer which is before last layer)
         backbone_layers1 = list(self.net_org_x.children())
@@ -29,7 +29,7 @@ class SiameseNN(nn.Module):
         self.scaled_dot_attn4 = ScaledDotAttnModule()
 
         self.fc = torch.nn.Sequential(
-            torch.nn.Linear(672, 128),
+            torch.nn.Linear(440, 128),
             torch.nn.ReLU(),
             torch.nn.Dropout(0.3),
             torch.nn.Linear(128, 64),
@@ -72,11 +72,12 @@ class SiameseNN(nn.Module):
         # print(f"attention_output {attention_output}")
         # print(f"attention_output {attention_output.shape}")
         attention_output = nn.functional.normalize(attention_output, dim=1)
-        attention_output = self.fc(attention_output)
         # print("===== attention_output ", attention_output)
         # print("===== attention_output shape ", attention_output.shape)
 
         final_output = attention_output + output
+        final_output = self.fc(final_output)
+
         # print("===== final_output ", final_output)
         # print("===== final_output shape ", final_output.shape)
         final_output = torch.sigmoid(final_output)

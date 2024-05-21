@@ -26,12 +26,11 @@ if __name__ == "__main__":
         trainer = pl.Trainer(
             min_epochs=1,
             max_epochs=EPOCH,
-            accumulate_grad_batches=4,
+            accumulate_grad_batches=2,
             log_every_n_steps=10,
             callbacks=[
-                StochasticWeightAveraging(swa_lrs=1e-2),
-                ModelCheckpoint(dirpath=SAVE_MODEL_PATH, save_top_k=3, monitor="eval_loss"),
-                # EarlyStopping(monitor='eval_loss', patience=10)
+                ModelCheckpoint(dirpath=SAVE_MODEL_PATH, save_top_k=1, monitor="eval_loss"),
+                EarlyStopping(monitor='eval_loss', patience=15)
             ],
             default_root_dir=SAVE_MODEL_PATH
         )

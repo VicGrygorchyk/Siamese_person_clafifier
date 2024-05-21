@@ -32,10 +32,10 @@ accuracy = evaluate.load("accuracy")
 
 
 def get_accuracy(logit: 'Tensor', labels: 'Tensor') -> (float, float, float):
-    print("logit ", logit)
-    print("label ", labels)
+    print("logit ", logit.tolist())
+    print("label ", labels.tolist())
     pred = (logit > CLS_THRESHOLD).float()
-    print(f"predicted {pred}")
+    print(f"predicted {pred.tolist()}")
     acc_similar = (pred == labels).sum().item() / len(labels)
     print(f'acc of acc_similar {acc_similar}')
 
