@@ -29,15 +29,14 @@ class PersonsImages(Dataset):
     def __len__(self):
         return len(self._data_paths)
 
-    def __getitem__(self, index) -> Tuple['TensorType', 'TensorType', 'Tensor']:
+    def __getitem__(self, index) -> Tuple['TensorType', 'TensorType', float]:
         """
         For every example, we will select two images: label and target, and label_category aka class
         """
         item_path = self._data_paths[index]
         label_img = image_helper.load_image(item_path.label_img)
-        category = item_path.label_category
 
-        label_similar = float(category.label_similar)
+        label_similar = float(item_path.label_similar)
 
         target_img = image_helper.load_image(item_path.target_img)
         label_img, target_img = image_helper.scale_images(label_img, target_img)

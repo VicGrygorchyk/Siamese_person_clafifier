@@ -16,13 +16,13 @@ from siamese.model import SiameseNN
 from siamese.trainer_mng import ModelTrainingWrapper
 
 
-THRESHOLD = 0.37
+THRESHOLD = 0.49
 # 0.45 TP 609, TN 158, FP 46, FN 39
 # 0.3 TP 607, TN 162, FP 48, FN 35
 
 transformation = torch_transform.TransformInferHelper()
 # load pure Pytorch model
-model_checkpoint = ModelTrainingWrapper.load_from_checkpoint(checkpoint_path=f'{os.getenv("SAVE_MODEL_PATH")}epoch=41-step=210.ckpt')
+model_checkpoint = ModelTrainingWrapper.load_from_checkpoint(checkpoint_path=f'{os.getenv("SAVE_MODEL_PATH")}epoch=200-step=2401.ckpt')
 siamese = SiameseNN()
 siamese.load_state_dict(model_checkpoint.backbone.state_dict())
 TEST = False
@@ -105,15 +105,7 @@ if __name__ == "__main__":
         predicted_tensor, images_pathes, label_image_path = predict_batch(path_dir)
         predicted = predicted_tensor
 
-        # if predicted[0].shape[0] > 1:
-
-        has_face_1 = torch.where(predicted[:, 0] < THRESHOLD, HasFace.HAS_FACE.value, HasFace.IS_OTHER.value)
-        print(f"predicted_res has_face_1 {has_face_1}")
-        has_face_1_list = has_face_1.tolist()
-        has_face_2 = torch.where(predicted[:, 1] < THRESHOLD, HasFace.HAS_FACE.value, HasFace.IS_OTHER.value)
-        print(f"predicted_res has_face_2 {has_face_2}")
-        has_face_2_list = has_face_2.tolist()
-        is_similar = torch.where(predicted[:, 2] > THRESHOLD, Category.DIFFERENT.value, Category.SIMILAR.value)
+        is_similar = torch.where(predicted > THRESHOLD, Category.DIFFERENT.value, Category.SIMILAR.value)
         print(f"predicted_res is_similar {is_similar}")
 
         is_similar_list = is_similar.tolist()
@@ -121,7 +113,7 @@ if __name__ == "__main__":
         ones = is_similar_list.count([1])
         is_similar_label = 0 if zeros > ones else 1
 
-        for img_path, has_face in zip(images_pathes, has_face_2_list):
+        for img_path in images_pathes:
             if TEST:
                 expected = 0 if path_dir.endswith("true") else 1
                 # accuracy.append(expected == label_category)
@@ -141,9 +133,7 @@ if __name__ == "__main__":
                     "folder": path_dir,
                     "label_category": is_similar_label,
                     "label_img": label_image_path,
-                    "label_img_has_face": has_face_1_list[0],
                     "target_img": img_path,
-                    "target_img_has_face": has_face
                 }
             )
     # if TEST:
@@ -151,6 +141,6 @@ if __name__ == "__main__":
     #     print(accuracy.count(True))
     #     print(f'TP {tp}, TN {tn}, FP {fp}, FN {fn}')
 
-    labels_path = os.getenv('LABELS_PATH')
+    labels_path = os.getenv('DIRTY_LABELS_PATH')
     with open(labels_path, "w+") as json_file:
         json.dump(saved_results, json_file, indent=4)

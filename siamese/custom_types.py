@@ -15,15 +15,8 @@ class HasFace(Enum):
     IS_OTHER = 1  # others: pictures, cartoons, animals, things, no human etc
 
 
-class Label(BaseModel):
-    label_similar: Category
-
-    class Config:
-        use_enum_values = True
-
-
 class ImageItem(BaseModel):
-    label_category: Label
+    label_similar: Category
     label_img: str
     target_img: str
 

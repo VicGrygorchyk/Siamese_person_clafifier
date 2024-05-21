@@ -17,15 +17,19 @@ class SiameseNN(nn.Module):
 
     def __init__(self):
         super().__init__()
-        self.net_org_x = regnet_x_800mf(weights=RegNet_X_800MF_Weights.DEFAULT)
+        self.net_org_x = regnet_y_400mf(weights=RegNet_Y_400MF_Weights)
 
         # remove the last layer of backbone (linear layer which is before last layer)
         backbone_layers1 = list(self.net_org_x.children())
         self.backbone_x = torch.nn.Sequential(*backbone_layers1[:-1])
 
-        self.scaled_dot_attn = ScaledDotAttnModule()
+        self.scaled_dot_attn1 = ScaledDotAttnModule()
+        self.scaled_dot_attn2 = ScaledDotAttnModule()
+        self.scaled_dot_attn3 = ScaledDotAttnModule()
+        self.scaled_dot_attn4 = ScaledDotAttnModule()
+
         self.fc = torch.nn.Sequential(
-            torch.nn.Linear(672, 128),
+            torch.nn.Linear(440, 128),
             torch.nn.ReLU(),
             torch.nn.Dropout(0.3),
             torch.nn.Linear(128, 64),
@@ -51,23 +55,30 @@ class SiameseNN(nn.Module):
         # get two images' features
         output1 = self.forward_once(input1)
         output2 = self.forward_once(input2)
+
         # if it is similar
         output = torch.pow(
             (1 - nn.functional.cosine_similarity(output1, output2)),
             2
         )
         output = output.unsqueeze(dim=1)
-        print("===== after cosine output ", output)
-        print("===== after cosine output.shape ", output.shape)
 
-        attention_output = self.scaled_dot_attn(output1, output2, output1)
+        # attention
+        attention_output = self.scaled_dot_attn1(output1, output2, output1)
+        attention_output = self.scaled_dot_attn2(attention_output, output2, attention_output)
+        attention_output = self.scaled_dot_attn3(attention_output, output2, attention_output)
+        attention_output = self.scaled_dot_attn4(attention_output, output2, attention_output)
+
+        # print(f"attention_output {attention_output}")
+        # print(f"attention_output {attention_output.shape}")
         attention_output = nn.functional.normalize(attention_output, dim=1)
-        attention_output = self.fc(attention_output)
+        # print("===== attention_output ", attention_output)
+        # print("===== attention_output shape ", attention_output.shape)
 
-        print("===== attention_output ", attention_output)
-        print("===== attention_output shape ", attention_output.shape)
         final_output = attention_output + output
-        print("===== final_output ", final_output)
-        print("===== final_output shape ", final_output.shape)
+        final_output = self.fc(final_output)
 
+        # print("===== final_output ", final_output)
+        # print("===== final_output shape ", final_output.shape)
+        final_output = torch.sigmoid(final_output)
         return final_output

@@ -26,12 +26,11 @@ if __name__ == "__main__":
         trainer = pl.Trainer(
             min_epochs=1,
             max_epochs=EPOCH,
-            accumulate_grad_batches=8,
+            accumulate_grad_batches=2,
             log_every_n_steps=10,
             callbacks=[
-                StochasticWeightAveraging(swa_lrs=1e-2),
-                ModelCheckpoint(dirpath=SAVE_MODEL_PATH, save_top_k=3, monitor="eval_loss"),
-                # EarlyStopping(monitor='eval_loss', patience=10)
+                ModelCheckpoint(dirpath=SAVE_MODEL_PATH, save_top_k=1, monitor="eval_loss"),
+                EarlyStopping(monitor='eval_loss', patience=15)
             ],
             default_root_dir=SAVE_MODEL_PATH
         )
@@ -40,7 +39,7 @@ if __name__ == "__main__":
         if eval(os.getenv("FIND_BATCH_SIZE")):
             tuner.scale_batch_size(model_wrapped, mode='binsearch')
         if eval(os.getenv("FIND_LR_RATE")):
-            tuner.lr_find(model_wrapped, num_training=10)
+            tuner.lr_find(model_wrapped, num_training=50)
 
         trainer.fit(model=model_wrapped)
         trainer.test(model_wrapped)
