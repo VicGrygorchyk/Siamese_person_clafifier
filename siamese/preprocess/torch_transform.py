@@ -7,6 +7,7 @@ if TYPE_CHECKING:
 
 MEAN_COEF = 0.5
 STD_COEF = 0.5
+SIZE = (256, 256)
 
 
 class TransformCLSTrainHelper:
@@ -24,7 +25,7 @@ class TransformCLSTrainHelper:
 
 
 class TransformTrainHelper:
-    def __init__(self, size=(350, 350)):
+    def __init__(self, size=SIZE):
         self.transformation = transforms.Compose([
             transforms.ToTensor(),
             transforms.Resize(size, antialias=True),
@@ -53,7 +54,7 @@ class TransformInferHelper:
     def __init__(self):
         self.transformation = transforms.Compose([
             transforms.ToTensor(),
-            transforms.Resize((350, 350), antialias=True),
+            transforms.Resize(SIZE, antialias=True),
             transforms.Normalize(mean=[MEAN_COEF, MEAN_COEF, MEAN_COEF],
                                  std=[STD_COEF, STD_COEF, STD_COEF])
         ])

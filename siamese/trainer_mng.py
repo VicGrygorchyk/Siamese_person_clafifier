@@ -32,7 +32,7 @@ accuracy = evaluate.load("accuracy")
 
 
 def get_accuracy(logit: 'Tensor', labels: 'Tensor') -> (float, float, float):
-    print("logit ", logit.tolist())
+    # print("logit ", logit.tolist())
     print("label ", labels.tolist())
     pred = (logit > CLS_THRESHOLD).float()
     print(f"predicted {pred.tolist()}")
@@ -74,12 +74,8 @@ class ModelTrainingWrapper(pl.LightningModule):
         return DataLoader(self.test_ds, shuffle=False, batch_size=12, num_workers=8)
 
     def training_step(self, batch, batch_idx):
-        lbl_images, target_imgs, labels = batch
-        logits = self.backbone(lbl_images, target_imgs)
+        loss, logits, labels = self.process_batch(batch)
 
-        labels = labels.view_as(logits)
-
-        loss = self.criterion(logits, labels.float())
         loss_item = loss.item()
         log_metric('train loss', loss_item, batch_idx)
 
@@ -92,12 +88,8 @@ class ModelTrainingWrapper(pl.LightningModule):
         return optimizer
 
     def validation_step(self, batch, batch_idx):
-        lbl_images, target_imgs, labels = batch
-        logits = self.backbone(lbl_images, target_imgs)
+        loss, logits, labels = self.process_batch(batch)
 
-        labels = labels.view_as(logits)
-
-        loss = self.criterion(logits, labels.float())
         loss_item = loss.item()
         log_metric('eval loss', loss, batch_idx)
         self.eval_loss += loss_item
@@ -120,16 +112,21 @@ class ModelTrainingWrapper(pl.LightningModule):
         #     mlflow.pytorch.log_model(rf, "model", signature=signature)
 
     def test_step(self, batch, batch_idx):
-        lbl_images, target_imgs, labels = batch
-        logits = self.backbone(lbl_images, target_imgs)
-        labels = labels.view_as(logits)
-
-        loss = self.criterion(logits, labels.float())
+        loss, logits, labels = self.process_batch(batch)
         log_metric('test loss', loss, batch_idx)
 
         self.test_loss += loss.item()
         acc = get_accuracy(logits, labels)
         self.test_accuracy_similarity.append(acc)
+
+    def process_batch(self, batch):
+        lbl_images, target_imgs, diff, labels = batch
+        logits = self.backbone(lbl_images, target_imgs, diff)
+        labels = labels.view_as(logits)
+
+        loss = self.criterion(logits, labels.float())
+
+        return loss, logits, labels
 
     def on_test_start(self) -> None:
         self.test_loss = 0

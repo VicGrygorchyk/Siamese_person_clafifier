@@ -29,10 +29,17 @@ class SiameseNN(nn.Module):
         self.scaled_dot_attn4 = ScaledDotAttnModule()
 
         self.fc = torch.nn.Sequential(
-            torch.nn.Linear(672, 256),  # 440 for x_400
+            torch.nn.Linear(672, 128),  # 440 for x_400
             torch.nn.ReLU(),
             torch.nn.Dropout(0.5),
-            torch.nn.Linear(256, 128),
+            torch.nn.Linear(128, 64),
+            torch.nn.ReLU(),
+            torch.nn.Dropout(0.5),
+            torch.nn.Linear(64, 1)
+        )
+
+        self.fc_attn = torch.nn.Sequential(
+            torch.nn.Linear(672, 128),  # 440 for x_400
             torch.nn.ReLU(),
             torch.nn.Dropout(0.5),
             torch.nn.Linear(128, 64),
@@ -42,9 +49,9 @@ class SiameseNN(nn.Module):
         )
 
         self.final_fc = torch.nn.Sequential(
-            torch.nn.Linear(3, 9),
+            torch.nn.Linear(4, 16),
             torch.nn.ReLU(),
-            torch.nn.Linear(9, 1)
+            torch.nn.Linear(16, 1)
         )
         self.fc.apply(self.init_weights)
         self.backbone_x.apply(self.init_weights)
@@ -77,11 +84,12 @@ class SiameseNN(nn.Module):
         feat_difference = torch.pow((output1 - output2), 2)
 
         # attention
-        # attention_output = self.scaled_dot_attn1(output1, output2, output1)
-        # attention_output = self.scaled_dot_attn2(attention_output, output2, attention_output)
-        # attention_output = self.scaled_dot_attn3(attention_output, output2, attention_output)
-        # attention_output = self.scaled_dot_attn4(attention_output, output2, attention_output)
-        #
+        attention_output = self.scaled_dot_attn1(output1, output2, output1)
+        attention_output = self.scaled_dot_attn2(attention_output, output2, attention_output)
+        attention_output = self.scaled_dot_attn3(attention_output, output2, attention_output)
+        attention_output = self.scaled_dot_attn4(attention_output, output2, attention_output)
+        fc_attn_output = self.fc_attn(attention_output)
+
         # attention_output = nn.functional.normalize(attention_output, dim=1)
         # print("===== attention_output ", attention_output)
         # print("===== attention_output shape ", attention_output.shape)
@@ -99,7 +107,7 @@ class SiameseNN(nn.Module):
         # print("===== fc_output ", fc_output)
         # print("===== fc_output ", fc_output.shape)
 
-        final_input = torch.cat((fc_output, diff, cos_similarity), dim=1)
+        final_input = torch.cat((fc_output, fc_attn_output, diff, cos_similarity), dim=1)
         # print("===== final ", final_input)
         # print("===== final_input shape ", final_input.shape)
 

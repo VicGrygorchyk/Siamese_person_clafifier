@@ -29,8 +29,9 @@ if __name__ == "__main__":
             accumulate_grad_batches=2,
             log_every_n_steps=10,
             callbacks=[
+                StochasticWeightAveraging(swa_lrs=0.05),
                 ModelCheckpoint(dirpath=SAVE_MODEL_PATH, save_top_k=1, monitor="eval_loss"),
-                EarlyStopping(monitor='eval_loss', patience=15)
+                EarlyStopping(monitor='eval_loss', patience=25)
             ],
             default_root_dir=SAVE_MODEL_PATH
         )
