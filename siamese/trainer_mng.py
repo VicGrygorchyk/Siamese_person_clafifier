@@ -14,7 +14,7 @@ from mlflow.models import infer_signature
 import lightning.pytorch as pl
 
 from siamese.dataset import PersonsImages
-from siamese.model import SiameseNN
+from siamese.model2 import SiameseNN
 
 if TYPE_CHECKING:
     from torch import Tensor
@@ -32,10 +32,10 @@ accuracy = evaluate.load("accuracy")
 
 
 def get_accuracy(logit: 'Tensor', labels: 'Tensor') -> (float, float, float):
-    # print("logit ", logit.tolist())
+    print("logit ", logit.tolist())
     print("label ", labels.tolist())
     pred = (logit > CLS_THRESHOLD).float()
-    print(f"predicted {pred.tolist()}")
+    # print(f"predicted {pred.tolist()}")
     acc_similar = (pred == labels).sum().item() / len(labels)
     print(f'acc of acc_similar {acc_similar}')
 

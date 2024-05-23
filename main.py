@@ -31,7 +31,7 @@ if __name__ == "__main__":
             callbacks=[
                 StochasticWeightAveraging(swa_lrs=0.05),
                 ModelCheckpoint(dirpath=SAVE_MODEL_PATH, save_top_k=1, monitor="eval_loss"),
-                EarlyStopping(monitor='eval_loss', patience=25)
+                EarlyStopping(monitor='eval_loss', patience=30)
             ],
             default_root_dir=SAVE_MODEL_PATH
         )
