@@ -14,7 +14,7 @@ from mlflow.models import infer_signature
 import lightning.pytorch as pl
 
 from siamese.dataset import PersonsImages
-from siamese.model2 import SiameseNN
+from siamese.model3 import SiameseNN
 
 if TYPE_CHECKING:
     from torch import Tensor
@@ -120,8 +120,8 @@ class ModelTrainingWrapper(pl.LightningModule):
         self.test_accuracy_similarity.append(acc)
 
     def process_batch(self, batch):
-        lbl_images, target_imgs, diff, labels = batch
-        logits = self.backbone(lbl_images, target_imgs, diff)
+        lbl_images, target_imgs, labels = batch
+        logits = self.backbone(lbl_images, target_imgs)
         labels = labels.view_as(logits)
 
         loss = self.criterion(logits, labels.float())

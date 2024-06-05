@@ -5,7 +5,8 @@ import os
 
 class LabelItem(TypedDict):
     folder: str
-    label_category: int
+    is_same_img: int
+    confidence: float
     label_img: str
     label_img_has_face: int
     target_img: str
@@ -17,7 +18,7 @@ def main(path_to_file):
         json_data: List[LabelItem] = json.load(f)
 
         for item in json_data:
-            label = item['label_category']
+            label = item['is_same_img']
             folder = item['folder']
 
             if label == 0:

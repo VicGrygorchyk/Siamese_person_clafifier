@@ -7,7 +7,7 @@ if TYPE_CHECKING:
 
 MEAN_COEF = 0.5
 STD_COEF = 0.5
-SIZE = (256, 256)
+SIZE = (512, 512)
 
 
 class TransformCLSTrainHelper:

@@ -12,7 +12,7 @@ import torch
 sys.path.append('./')
 from siamese.preprocess import image_helper, torch_transform
 from siamese.custom_types import Category
-from siamese.model import SiameseNN
+from siamese.model3 import SiameseNN
 from siamese.trainer_mng import ModelTrainingWrapper
 
 
@@ -30,10 +30,10 @@ siamese.load_state_dict(model_checkpoint.backbone.state_dict())
 TEST = False
 
 
-def use_model(imgs: 'torch.Tensor', other_imgs: 'torch.Tensor', diff) -> torch.FloatTensor:
+def use_model(imgs: 'torch.Tensor', other_imgs: 'torch.Tensor', diff=None) -> torch.FloatTensor:
     siamese.eval()
     with torch.no_grad():
-        activations = siamese(imgs, other_imgs, diff)
+        activations = siamese(imgs, other_imgs)
         print(activations)
 
     return activations
