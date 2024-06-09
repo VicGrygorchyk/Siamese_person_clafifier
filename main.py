@@ -42,5 +42,12 @@ if __name__ == "__main__":
         if eval(os.getenv("FIND_LR_RATE")):
             tuner.lr_find(model_wrapped, num_training=50)
 
-        trainer.fit(model=model_wrapped)
+        if eval(os.getenv("CONTINUE_TRAINING")):
+            trainer.fit(
+                model=model_wrapped,
+                ckpt_path=f'{os.getenv("SAVE_MODEL_PATH")}{os.getenv("BEST_MODEL_CHECKPOINT")}'
+            )
+        else:
+            trainer.fit(model=model_wrapped)
+
         trainer.test(model_wrapped)

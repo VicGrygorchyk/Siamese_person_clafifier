@@ -6,6 +6,7 @@ import sys
 from typing import List, Tuple
 from glob import glob
 import json
+import lightning
 
 import torch
 
@@ -39,21 +40,23 @@ def use_model(imgs: 'torch.Tensor', other_imgs: 'torch.Tensor', diff=None) -> to
     return activations
 
 
-def predict_one(img_target_path, img_label_path) -> int:
+def predict_one(img_target_path, img_label_path) -> (int, float):
     img_label = image_helper.load_image(img_label_path)
     img_target = image_helper.load_image(img_target_path)
-    label_img, target_img = image_helper.scale_images(img_label, img_target)
+    label_img = image_helper.make_square(img_label)
+    target_img = image_helper.make_square(img_target)
+
+    diff = image_helper.get_image_difference(label_img, target_img)
 
     label_img, target_img = transformation.transform_2_imgs(label_img, target_img)
     label_img = label_img.unsqueeze(dim=0)
     target_img = target_img.unsqueeze(dim=0)
 
-    diff = image_helper.get_image_difference(label_img, target_img)
-    predicted = use_model(label_img, target_img, diff)
+    predicted = use_model(label_img, target_img, None)
 
     result = Category.SIMILAR.value if predicted.item() <= THRESHOLD else Category.DIFFERENT.value
     print(result)
-    return result
+    return result, diff
 
 
 def predict_batch(path_to_img_folder: str) -> Tuple['torch.Tensor', List, List, str]:
@@ -94,8 +97,8 @@ def predict_batch(path_to_img_folder: str) -> Tuple['torch.Tensor', List, List, 
 
 if __name__ == "__main__":
     # predict_one(
-    #     '/media/mudro/0B8CDB8D01D869D6/VICTOR_MY_LOVE/datasets/siamese/data/yandex/1514_false/user',
-    #     '/media/mudro/0B8CDB8D01D869D6/VICTOR_MY_LOVE/datasets/siamese/data/yandex/1514_false/google_img0'
+    #     '/media/mudro/Disk120Linux/datasets/siamese/data/dataset/2024-05-30 03:30:09.880028_false_false_false/user',
+    #     '/media/mudro/Disk120Linux/datasets/siamese/data/dataset/2024-05-30 03:30:09.880028_false_false_false/google_img0'
     # )
     saved_results = []
     if TEST:
@@ -139,7 +142,11 @@ if __name__ == "__main__":
                 #     else:
                 #         fn += 1
             should_skipped_list_item = should_skipped_list[idx][0]
+
             is_similar_list_item = is_similar_list[idx][0]
+            if img_diffs[idx] < 0.1 and is_similar_list_item == 1:
+                should_skipped_list_item = 3
+
             predicted_list_item = predicted_list[idx][0]
             saved_results.append(
                 {
